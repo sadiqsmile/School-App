@@ -5,6 +5,7 @@ import '../services/attendance_service.dart';
 import '../services/admin_data_service.dart';
 import '../services/admin_service.dart';
 import '../services/auth_service.dart';
+import '../services/exam_service.dart';
 import '../services/homework_service.dart';
 import '../services/messaging_service.dart';
 import '../services/notification_service.dart';
@@ -37,6 +38,10 @@ final academicYearServiceProvider = Provider<AcademicYearService>((ref) {
 
 final attendanceServiceProvider = Provider<AttendanceService>((ref) {
   return AttendanceService();
+});
+
+final examServiceProvider = Provider<ExamService>((ref) {
+  return ExamService();
 });
 
 final homeworkServiceProvider = Provider<HomeworkService>((ref) {
