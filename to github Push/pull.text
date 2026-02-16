@@ -1,0 +1,40 @@
+
+To push___________________
+
+git init
+git add .
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/sadiqsmile/School-App.git
+git push -u origin main
+
+
+To pull________________
+First Clone once:
+
+git clone YOUR_GITHUB_REPO_LINK
+
+Then open that folder in VS Code.
+
+______________________________________________
+______________________________________________
+At home after changes:
+
+git add .
+git commit -m "updated"
+git push
+________________________________
+
+
+At school to get latest changes:
+git pull
+_________________________________________________
+
+after changes in school
+
+git add .
+git commit -m "updated from school"
+git push
+______________________________________________________
+in home pull the data________________________________
+git pull
