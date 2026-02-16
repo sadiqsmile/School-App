@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "483672560035",
+    "project_id": "hongiranaapp",
+    "storage_bucket": "hongiranaapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:483672560035:android:6596c6d3c980a70dc30a16",
+        "android_client_info": {
+          "package_name": "com.example.school_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdIXfRL6c8voI9NtW1HKQ_3FeYPwlkIgg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

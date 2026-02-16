@@ -1,0 +1,28 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role(schoolId) {
+      return firestore.get(
+        /databases/(default)/documents/schools/$(schoolId)/users/$(request.auth.uid)
+      ).data.role;
+    }
+
+    function isAdmin(schoolId) {
+      return isSignedIn() && role(schoolId) == 'admin';
+    }
+
+    function isTeacher(schoolId) {
+      return isSignedIn() && role(schoolId) == 'teacher';
+    }
+
+    // All files are stored under: /schools/{schoolId}/...
+    match /schools/{schoolId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+    }
+  }
+}

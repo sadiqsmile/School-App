@@ -1,0 +1,180 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc(schoolId) {
+      return get(/databases/$(database)/documents/schools/$(schoolId)/users/$(request.auth.uid));
+    }
+
+    function role(schoolId) {
+      return isSignedIn() ? userDoc(schoolId).data.role : null;
+    }
+
+    function isAdmin(schoolId) {
+      return isSignedIn() && role(schoolId) == 'admin';
+    }
+
+    function isTeacher(schoolId) {
+      return isSignedIn() && role(schoolId) == 'teacher';
+    }
+
+    function isParent(schoolId) {
+      return isSignedIn() && role(schoolId) == 'parent';
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function teacherHasClassSection(schoolId, classSectionId) {
+      return isTeacher(schoolId) &&
+        classSectionId in get(/databases/$(database)/documents/schools/$(schoolId)/teacherAssignments/$(request.auth.uid)).data.classSectionIds;
+    }
+
+    function parentHasClassSectionAccess(yearId, schoolId, classSectionId) {
+      // Mapping doc created by admin when a parent has a child in a class-section.
+      // Doc id format: {parentUid}__{classSectionId}
+      return isParent(schoolId) &&
+        exists(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/parentClassSections/$(request.auth.uid + '__' + classSectionId));
+    }
+
+    // --------------------
+    // School-level (not year-specific)
+    // --------------------
+
+    match /schools/{schoolId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin(schoolId);
+
+      match /settings/{docId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /users/{uid} {
+        allow read: if isAdmin(schoolId) || isSelf(uid);
+        allow create, delete: if isAdmin(schoolId);
+        allow update: if isAdmin(schoolId) || isSelf(uid);
+
+        // FCM tokens are written by the signed-in user.
+        match /fcmTokens/{tokenId} {
+          allow read: if isAdmin(schoolId) || isSelf(uid);
+          allow create, update, delete: if isSelf(uid) || isAdmin(schoolId);
+        }
+      }
+
+      match /students/{studentId} {
+        // Student base profile (non-year-specific)
+        allow read: if isAdmin(schoolId) || isTeacher(schoolId) || isParent(schoolId);
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /parents/{parentUid} {
+        allow read: if isAdmin(schoolId) || isSelf(parentUid);
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /teachers/{teacherUid} {
+        allow read: if isAdmin(schoolId) || isSelf(teacherUid);
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /classes/{classId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /sections/{sectionId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin(schoolId);
+      }
+
+      match /teacherAssignments/{teacherUid} {
+        allow read: if isAdmin(schoolId) || isSelf(teacherUid);
+        allow write: if isAdmin(schoolId);
+      }
+    }
+
+    // --------------------
+    // Academic Year data (easy to wipe per year)
+    // Path: /academicYears/{yearId}/schools/{schoolId}/...
+    // --------------------
+
+    match /academicYears/{yearId} {
+      allow read: if isSignedIn();
+      allow write: if false;
+
+      match /schools/{schoolId} {
+        allow read: if isSignedIn();
+        allow write: if isAdmin(schoolId);
+
+        // Optional mapping docs for parents.
+        match /parentClassSections/{mappingId} {
+          allow read: if isAdmin(schoolId) || isTeacher(schoolId) || isParent(schoolId);
+          allow write: if isAdmin(schoolId);
+        }
+
+        // Year-specific student snapshot (recommended for permissions)
+        match /students/{studentId} {
+          allow read: if isAdmin(schoolId)
+            || (isTeacher(schoolId) && teacherHasClassSection(schoolId, resource.data.classSectionId))
+            || (isParent(schoolId) && request.auth.uid in resource.data.parentUids);
+          allow write: if isAdmin(schoolId);
+
+          match /attendance/{dateId} {
+            allow read: if isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherHasClassSection(schoolId, get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.classSectionId))
+              || (isParent(schoolId) && request.auth.uid in get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.parentUids);
+            allow create, update: if isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherHasClassSection(schoolId, get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.classSectionId));
+            allow delete: if isAdmin(schoolId);
+          }
+
+          match /fees/{invoiceId} {
+            allow read: if isAdmin(schoolId)
+              || (isParent(schoolId) && request.auth.uid in get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.parentUids);
+            allow write: if isAdmin(schoolId);
+          }
+
+          match /marks/{markId} {
+            allow read: if isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherHasClassSection(schoolId, get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.classSectionId))
+              || (isParent(schoolId) && request.auth.uid in get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.parentUids);
+            allow create, update: if isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherHasClassSection(schoolId, get(/databases/$(database)/documents/academicYears/$(yearId)/schools/$(schoolId)/students/$(studentId)).data.classSectionId));
+            allow delete: if isAdmin(schoolId);
+          }
+        }
+
+        // Class Sections (year-specific)
+        match /classSections/{classSectionId} {
+          allow read: if isAdmin(schoolId) || isTeacher(schoolId) || parentHasClassSectionAccess(yearId, schoolId, classSectionId);
+          allow write: if isAdmin(schoolId);
+
+          match /timetable/{itemId} {
+            allow read: if isAdmin(schoolId) || isTeacher(schoolId) || parentHasClassSectionAccess(yearId, schoolId, classSectionId);
+            allow write: if isAdmin(schoolId) || teacherHasClassSection(schoolId, classSectionId);
+          }
+
+          match /homework/{homeworkId} {
+            allow read: if isAdmin(schoolId) || isTeacher(schoolId) || parentHasClassSectionAccess(yearId, schoolId, classSectionId);
+            allow write: if isAdmin(schoolId) || teacherHasClassSection(schoolId, classSectionId);
+          }
+        }
+
+        match /exams/{examId} {
+          allow read: if isSignedIn();
+          allow write: if isAdmin(schoolId);
+        }
+
+        match /notifications/{notificationId} {
+          allow read: if isSignedIn();
+          allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+	"flutter": {
+		"platforms": {
+			"android": {
+				"default": {
+					"projectId": "hongiranaapp",
+					"appId": "1:483672560035:android:6596c6d3c980a70dc30a16",
+					"fileOutput": "android/app/google-services.json"
+				}
+			},
+			"dart": {
+				"lib/firebase_options.dart": {
+					"projectId": "hongiranaapp",
+					"configurations": {
+						"android": "1:483672560035:android:6596c6d3c980a70dc30a16",
+						"web": "1:483672560035:web:7d637c2e1effa67dc30a16"
+					}
+				}
+			}
+		}
+	}
+}
