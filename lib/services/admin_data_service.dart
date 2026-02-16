@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../config/app_config.dart';
+import 'parent_password_hasher.dart';
 
 class AdminDataService {
   AdminDataService({FirebaseFirestore? firestore})
@@ -239,6 +240,16 @@ class AdminDataService {
     final admissionIndexDoc = school.collection('admissionNumbers').doc(cleanedAdmission);
     final parentDoc = school.collection('parents').doc(cleanedMobile);
 
+    // Default parent password = last 4 digits (stored securely).
+    final defaultPassword = ParentPasswordHasher.defaultPasswordForMobile(cleanedMobile);
+    final saltBytes = ParentPasswordHasher.generateSaltBytes();
+    final saltB64 = ParentPasswordHasher.saltToBase64(saltBytes);
+    final hashB64 = await ParentPasswordHasher.hashPasswordToBase64(
+      password: defaultPassword,
+      saltBytes: saltBytes,
+      version: ParentPasswordHasher.defaultVersion(),
+    );
+
     return _firestore.runTransaction<String>((tx) async {
       final admissionSnap = await tx.get(admissionIndexDoc);
       if (admissionSnap.exists) {
@@ -269,6 +280,7 @@ class AdminDataService {
       if (parentSnap.exists) {
         final update = <String, Object?>{
           'children': FieldValue.arrayUnion([newStudentRef.id]),
+          'updatedAt': FieldValue.serverTimestamp(),
         };
         if (cleanedParentName != null && cleanedParentName.isNotEmpty) {
           update['displayName'] = cleanedParentName;
@@ -276,17 +288,22 @@ class AdminDataService {
 
         tx.set(parentDoc, update, SetOptions(merge: true));
       } else {
-        final defaultPassword = cleanedMobile.substring(cleanedMobile.length - 4);
         tx.set(parentDoc, {
           'mobile': cleanedMobile,
-          'password': defaultPassword,
+          'phone': cleanedMobile,
+          'passwordHash': hashB64,
+          'passwordSalt': saltB64,
+          'passwordVersion': ParentPasswordHasher.defaultVersion(),
           'displayName': (cleanedParentName == null || cleanedParentName.isEmpty)
               ? 'Parent'
               : cleanedParentName,
           'role': 'parent',
           'isActive': true,
           'children': [newStudentRef.id],
+          'failedAttempts': 0,
+          'lockUntil': FieldValue.delete(),
           'createdAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
         });
       }
 

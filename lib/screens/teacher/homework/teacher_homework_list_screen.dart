@@ -20,6 +20,7 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
   String? _sectionId;
   String? _subject;
   String? _type; // null=all, homework/notes
+  bool _hideOlderThan30Days = true;
 
   void _snack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -116,6 +117,7 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
         loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (yearId) {
+          final cutoff = DateTime.now().subtract(const Duration(days: 30));
           final stream = ref.read(homeworkServiceProvider).watchHomework(
                 yearId: yearId,
                 classId: _classId,
@@ -123,6 +125,7 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
                 subject: _subject,
                 type: _type,
                 onlyActive: false, // teacher sees all
+                minPublishDate: _hideOlderThan30Days ? cutoff : null,
               );
 
           return Column(
@@ -141,6 +144,18 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
                               .textTheme
                               .titleMedium
                               ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
+                        const SizedBox(height: 12),
+                        SwitchListTile(
+                          value: _hideOlderThan30Days,
+                          onChanged: (v) => setState(() => _hideOlderThan30Days = v),
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Auto-hide older than 30 days'),
+                          subtitle: Text(
+                            _hideOlderThan30Days
+                                ? 'Showing only last 30 days (FREE plan friendly)'
+                                : 'Showing all dates (may be slower)',
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Row(

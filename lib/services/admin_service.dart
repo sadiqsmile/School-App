@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../config/app_config.dart';
+import 'parent_password_hasher.dart';
 
 class CreateParentResult {
   const CreateParentResult({
@@ -73,7 +74,15 @@ class AdminService {
       throw Exception("Invalid mobile number");
     }
 
-    final defaultPassword = mobile.substring(mobile.length - 4);
+    final defaultPassword = ParentPasswordHasher.defaultPasswordForMobile(mobile);
+
+    final saltBytes = ParentPasswordHasher.generateSaltBytes();
+    final saltB64 = ParentPasswordHasher.saltToBase64(saltBytes);
+    final hashB64 = await ParentPasswordHasher.hashPasswordToBase64(
+      password: defaultPassword,
+      saltBytes: saltBytes,
+      version: ParentPasswordHasher.defaultVersion(),
+    );
 
     final docRef = _firestore
         .collection('schools')
@@ -85,17 +94,57 @@ class AdminService {
       // Keep both keys for compatibility across older/newer UI code.
       'mobile': mobile,
       'phone': mobile,
-      'password': defaultPassword,
+      'passwordHash': hashB64,
+      'passwordSalt': saltB64,
+      'passwordVersion': ParentPasswordHasher.defaultVersion(),
       'displayName': displayName.trim(),
       'role': 'parent',
       'isActive': true,
       'children': [],
+      'failedAttempts': 0,
+      'lockUntil': FieldValue.delete(),
       'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
 
     return CreateParentResult(
       mobile: mobile,
       defaultPassword: defaultPassword,
     );
+  }
+
+  /// Admin reset parent password to default (last 4 digits of mobile).
+  ///
+  /// Stores the password securely (PBKDF2) and clears lockout counters.
+  /// Returns the new plaintext password so the admin can communicate it.
+  Future<String> resetParentPasswordToDefault({
+    String schoolId = AppConfig.schoolId,
+    required String mobile,
+  }) async {
+    final m = mobile.trim();
+    if (m.length < 4) throw Exception('Invalid mobile number');
+
+    final newPassword = ParentPasswordHasher.defaultPasswordForMobile(m);
+    final saltBytes = ParentPasswordHasher.generateSaltBytes();
+    final saltB64 = ParentPasswordHasher.saltToBase64(saltBytes);
+    final hashB64 = await ParentPasswordHasher.hashPasswordToBase64(
+      password: newPassword,
+      saltBytes: saltBytes,
+      version: ParentPasswordHasher.defaultVersion(),
+    );
+
+    final ref = _firestore.collection('schools').doc(schoolId).collection('parents').doc(m);
+    await ref.set({
+      'passwordHash': hashB64,
+      'passwordSalt': saltB64,
+      'passwordVersion': ParentPasswordHasher.defaultVersion(),
+      'password': FieldValue.delete(),
+      'failedAttempts': 0,
+      'lockUntil': FieldValue.delete(),
+      'passwordResetAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return newPassword;
   }
 }

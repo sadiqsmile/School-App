@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../config/app_config.dart';
 import '../../../providers/core_providers.dart';
+import '../../../services/parent_password_hasher.dart';
 import '../../../widgets/loading_view.dart';
 
 class AdminStudentDetailsScreen extends ConsumerStatefulWidget {
@@ -120,6 +121,16 @@ class _AdminStudentDetailsScreenState extends ConsumerState<AdminStudentDetailsS
       final oldParentRef = oldMobile.trim().isEmpty ? null : school.collection('parents').doc(oldMobile);
       final newParentRef = school.collection('parents').doc(newMobile);
 
+      // If we end up creating a new parent account, we store the default password securely.
+      final defaultPassword = ParentPasswordHasher.defaultPasswordForMobile(newMobile);
+      final saltBytes = ParentPasswordHasher.generateSaltBytes();
+      final saltB64 = ParentPasswordHasher.saltToBase64(saltBytes);
+      final hashB64 = await ParentPasswordHasher.hashPasswordToBase64(
+        password: defaultPassword,
+        saltBytes: saltBytes,
+        version: ParentPasswordHasher.defaultVersion(),
+      );
+
       await fs.runTransaction((tx) async {
         final studentSnap = await tx.get(studentRef);
         if (!studentSnap.exists) {
@@ -133,7 +144,10 @@ class _AdminStudentDetailsScreenState extends ConsumerState<AdminStudentDetailsS
         if (oldParentRef != null) {
           tx.set(
             oldParentRef,
-            {'children': FieldValue.arrayRemove([widget.studentId])},
+            {
+              'children': FieldValue.arrayRemove([widget.studentId]),
+              'updatedAt': FieldValue.serverTimestamp(),
+            },
             SetOptions(merge: true),
           );
         }
@@ -143,21 +157,27 @@ class _AdminStudentDetailsScreenState extends ConsumerState<AdminStudentDetailsS
         if (newParentSnap.exists) {
           final update = <String, Object?>{
             'children': FieldValue.arrayUnion([widget.studentId]),
+            'updatedAt': FieldValue.serverTimestamp(),
           };
           if (parentName != null && parentName.isNotEmpty) {
             update['displayName'] = parentName;
           }
           tx.set(newParentRef, update, SetOptions(merge: true));
         } else {
-          final defaultPassword = newMobile.substring(newMobile.length - 4);
           tx.set(newParentRef, {
             'mobile': newMobile,
-            'password': defaultPassword,
+            'phone': newMobile,
+            'passwordHash': hashB64,
+            'passwordSalt': saltB64,
+            'passwordVersion': ParentPasswordHasher.defaultVersion(),
             'displayName': parentName ?? 'Parent',
             'role': 'parent',
             'isActive': true,
             'children': [widget.studentId],
+            'failedAttempts': 0,
+            'lockUntil': FieldValue.delete(),
             'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
           });
         }
       });

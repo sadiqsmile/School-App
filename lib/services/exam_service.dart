@@ -344,8 +344,8 @@ class ExamService {
       }
 
       // Totals.
-      final totalObtained = subjects.fold<double>(0, (sum, x) => sum + x.obtainedMarks);
-      final totalMax = subjects.fold<double>(0, (sum, x) => sum + x.maxMarks);
+      final totalObtained = subjects.fold<double>(0, (acc, x) => acc + x.obtainedMarks);
+      final totalMax = subjects.fold<double>(0, (acc, x) => acc + x.maxMarks);
       final percentage = totalMax <= 0 ? 0.0 : (totalObtained / totalMax) * 100.0;
       final grade = gradeFromPercentage(percentage);
 

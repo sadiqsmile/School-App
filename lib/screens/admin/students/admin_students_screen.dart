@@ -1,12 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../providers/auth_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../widgets/loading_view.dart';
+import '../../../features/csv/students_csv.dart';
+import '../../../utils/csv_saver.dart';
 
 import 'admin_add_student_screen.dart';
 import 'admin_student_details_screen.dart';
+import 'admin_students_csv_import_screen.dart';
+
+enum _StudentCsvAction {
+  export,
+  import,
+}
 
 class AdminStudentsScreen extends ConsumerStatefulWidget {
   const AdminStudentsScreen({super.key});
@@ -30,6 +39,58 @@ class _AdminStudentsScreenState extends ConsumerState<AdminStudentsScreen> {
     );
     if (!mounted) return;
     if (ok == true) _snack('Student saved');
+  }
+
+  Future<void> _exportStudentsCsv() async {
+    try {
+      final rows = await ref.read(studentCsvImportServiceProvider).exportBaseStudentsForCsv();
+      final csvText = buildStudentsCsv(students: rows);
+
+      final now = DateTime.now();
+      final y = now.year.toString().padLeft(4, '0');
+      final m = now.month.toString().padLeft(2, '0');
+      final d = now.day.toString().padLeft(2, '0');
+      final fileName = 'students_$y$m$d.csv';
+
+      await saveCsvText(fileName: fileName, csvText: csvText);
+
+      if (!mounted) return;
+      _snack('CSV exported');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Export failed: $e');
+    }
+  }
+
+  Future<void> _importStudentsCsv() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+      );
+      if (res == null || res.files.isEmpty) return;
+      final f = res.files.first;
+      final bytes = f.bytes;
+      if (bytes == null) {
+        _snack('Could not read the selected file. Please try again.');
+        return;
+      }
+
+      final parsed = parseStudentsCsvBytes(bytes: bytes);
+      if (!mounted) return;
+      final ok = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => AdminStudentsCsvImportScreen(parseResult: parsed),
+        ),
+      );
+      if (!mounted) return;
+      if (ok == true) _snack('Import complete');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Import failed: $e');
+    }
   }
 
   @override
@@ -57,6 +118,41 @@ class _AdminStudentsScreenState extends ConsumerState<AdminStudentsScreen> {
                       .textTheme
                       .titleLarge
                       ?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+              PopupMenuButton<_StudentCsvAction>(
+                tooltip: 'CSV actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case _StudentCsvAction.export:
+                      _exportStudentsCsv();
+                      break;
+                    case _StudentCsvAction.import:
+                      _importStudentsCsv();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _StudentCsvAction.export,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.download_outlined),
+                      title: Text('Export CSV'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _StudentCsvAction.import,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.upload_file_outlined),
+                      title: Text('Import CSV'),
+                    ),
+                  ),
+                ],
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 8),
+                  child: Icon(Icons.more_vert),
                 ),
               ),
               FilledButton.icon(

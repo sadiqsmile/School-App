@@ -15,6 +15,9 @@ import '../admin/setup/admin_setup_wizard_screen.dart';
 import '../admin/students/admin_students_screen.dart';
 import '../admin/teachers/admin_teachers_screen.dart';
 import '../admin/timetable/admin_timetable_screen.dart';
+import '../admin/exams/admin_exams_screen.dart';
+import '../admin/academic_year/admin_academic_year_settings_screen.dart';
+import '../admin/homework/admin_homework_maintenance_screen.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/notification_token_registration_runner.dart';
 import '../shared/notifications/notification_center_screen.dart';
@@ -32,6 +35,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   static const _items = <_AdminNavItem>[
     _AdminNavItem('Setup Wizard', Icons.auto_fix_high, _AdminPage.setupWizard),
     _AdminNavItem('Dashboard', Icons.dashboard, _AdminPage.dashboard),
+    _AdminNavItem('Academic Year', Icons.calendar_today, _AdminPage.academicYear),
     _AdminNavItem('Students', Icons.badge, _AdminPage.students),
     _AdminNavItem('Attendance', Icons.fact_check_outlined, _AdminPage.attendance),
     _AdminNavItem('Parents', Icons.family_restroom, _AdminPage.parents),
@@ -39,6 +43,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
     _AdminNavItem('Classes/Sections', Icons.class_, _AdminPage.classes),
     _AdminNavItem('Timetable', Icons.calendar_month, _AdminPage.timetable),
     _AdminNavItem('Exams', Icons.school, _AdminPage.exams),
+    _AdminNavItem('Homework Tools', Icons.archive_outlined, _AdminPage.homeworkTools),
     _AdminNavItem('Notifications', Icons.notifications, _AdminPage.notifications),
   ];
 
@@ -181,6 +186,9 @@ class _AdminContent extends ConsumerWidget {
     if (page == _AdminPage.setupWizard) {
       return const AdminSetupWizardScreen();
     }
+    if (page == _AdminPage.academicYear) {
+      return const AdminAcademicYearSettingsScreen();
+    }
     if (page == _AdminPage.students) {
       return const AdminStudentsScreen();
     }
@@ -198,6 +206,14 @@ class _AdminContent extends ConsumerWidget {
     }
     if (page == _AdminPage.timetable) {
       return const AdminTimetableScreen();
+    }
+
+    if (page == _AdminPage.exams) {
+      return const AdminExamsScreen();
+    }
+
+    if (page == _AdminPage.homeworkTools) {
+      return const AdminHomeworkMaintenanceScreen();
     }
 
     if (page == _AdminPage.notifications) {
@@ -247,11 +263,19 @@ class _AdminContent extends ConsumerWidget {
                   onTap: () => onNavigate(_AdminPage.setupWizard),
                 ),
                 DashboardActionCard(
+                  title: 'Academic Year',
+                  subtitle: 'Set active year + rollover wizard',
+                  icon: Icons.calendar_today_outlined,
+                  tint: const Color(0xFF1565C0),
+                  animationOrder: 1,
+                  onTap: () => onNavigate(_AdminPage.academicYear),
+                ),
+                DashboardActionCard(
                   title: 'Students',
                   subtitle: 'Create and assign to class/section',
                   icon: Icons.badge_outlined,
                   tint: scheme.secondary,
-                  animationOrder: 1,
+                  animationOrder: 2,
                   onTap: () => onNavigate(_AdminPage.students),
                 ),
                 DashboardActionCard(
@@ -259,7 +283,7 @@ class _AdminContent extends ConsumerWidget {
                   subtitle: 'Create parent accounts and link students',
                   icon: Icons.family_restroom,
                   tint: const Color(0xFF1565C0),
-                  animationOrder: 2,
+                  animationOrder: 3,
                   onTap: () => onNavigate(_AdminPage.parents),
                 ),
                 DashboardActionCard(
@@ -267,7 +291,7 @@ class _AdminContent extends ConsumerWidget {
                   subtitle: 'Create teacher accounts and assign classes',
                   icon: Icons.person_outline,
                   tint: const Color(0xFF2E7D32),
-                  animationOrder: 3,
+                  animationOrder: 4,
                   onTap: () => onNavigate(_AdminPage.teachers),
                 ),
                 DashboardActionCard(
@@ -275,8 +299,16 @@ class _AdminContent extends ConsumerWidget {
                   subtitle: 'Manage class levels and sections',
                   icon: Icons.class_outlined,
                   tint: const Color(0xFF00838F),
-                  animationOrder: 4,
+                  animationOrder: 5,
                   onTap: () => onNavigate(_AdminPage.classes),
+                ),
+                DashboardActionCard(
+                  title: 'Homework Tools',
+                  subtitle: 'Archive old homework/notes',
+                  icon: Icons.archive_outlined,
+                  tint: const Color(0xFF6A1B9A),
+                  animationOrder: 6,
+                  onTap: () => onNavigate(_AdminPage.homeworkTools),
                 ),
               ],
             ),
@@ -288,6 +320,7 @@ class _AdminContent extends ConsumerWidget {
     final title = switch (page) {
       _AdminPage.setupWizard => 'Admin Setup Wizard',
       _AdminPage.dashboard => 'Admin Dashboard',
+      _AdminPage.academicYear => 'Academic Year Settings',
       _AdminPage.students => 'Manage Students',
       _AdminPage.attendance => 'Attendance Report',
       _AdminPage.parents => 'Manage Parents',
@@ -295,6 +328,7 @@ class _AdminContent extends ConsumerWidget {
       _AdminPage.classes => 'Manage Classes/Sections',
       _AdminPage.timetable => 'Manage Timetable',
       _AdminPage.exams => 'Manage Exams & Results',
+      _AdminPage.homeworkTools => 'Homework Maintenance',
       _AdminPage.notifications => 'Send Notifications',
     };
 
@@ -303,6 +337,7 @@ class _AdminContent extends ConsumerWidget {
         'Guided setup: academic year → classes → accounts → assignments → verify attendance.',
       _AdminPage.dashboard =>
         'Overview: total students, attendance, and recent notices.',
+      _AdminPage.academicYear => 'Create years, set active year, and run rollover/promotion.',
       _AdminPage.students =>
         'Add/Edit/Delete students and assign to class/section for the academic year.',
       _AdminPage.attendance =>
@@ -313,6 +348,7 @@ class _AdminContent extends ConsumerWidget {
       _AdminPage.classes => 'Create classes and sections (A/B/C).',
       _AdminPage.timetable => 'Upload timetable for each class/section.',
       _AdminPage.exams => 'Create exams, enter marks, and publish results.',
+      _AdminPage.homeworkTools => 'Archive old homework/notes (history preserved).',
       _AdminPage.notifications =>
         'Send notifications school-wide or class-wise (FCM + Firestore).',
     };
@@ -420,6 +456,7 @@ class _AdminSummaryRow extends ConsumerWidget {
 enum _AdminPage {
   setupWizard,
   dashboard,
+  academicYear,
   students,
   attendance,
   parents,
@@ -427,6 +464,7 @@ enum _AdminPage {
   classes,
   timetable,
   exams,
+  homeworkTools,
   notifications,
 }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../providers/core_providers.dart';
+import 'admin_parent_details_screen.dart';
 
 import '../../../widgets/loading_view.dart';
 
@@ -14,6 +15,10 @@ class AdminParentsScreen extends ConsumerStatefulWidget {
 
 class _AdminParentsScreenState extends ConsumerState<AdminParentsScreen> {
   bool _creating = false;
+
+  void _open(BuildContext context, Widget screen) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
 
   Future<void> _createParentDialog() async {
     final phoneController = TextEditingController();
@@ -137,6 +142,10 @@ class _AdminParentsScreenState extends ConsumerState<AdminParentsScreen> {
                       title: Text(name),
                       subtitle: Text(phone),
                       trailing: Text(doc.id, style: Theme.of(context).textTheme.bodySmall),
+                      onTap: () => _open(
+                        context,
+                        AdminParentDetailsScreen(mobile: doc.id),
+                      ),
                     ),
                   );
                 },

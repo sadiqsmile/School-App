@@ -15,6 +15,7 @@ import '../teacher/contact_parents/teacher_contact_parents_screen.dart';
 import '../teacher/homework/teacher_homework_list_screen.dart';
 import '../teacher/timetable/teacher_timetable_screen.dart';
 import '../shared/notifications/notification_center_screen.dart';
+import '../teacher/exams/teacher_exams_screen.dart';
 
 class TeacherDashboard extends ConsumerWidget {
   const TeacherDashboard({super.key});
@@ -171,13 +172,7 @@ class TeacherDashboard extends ConsumerWidget {
                           icon: Icons.edit_note_outlined,
                           tint: const Color(0xFF6A1B9A),
                           animationOrder: 6,
-                          onTap: () => _open(
-                            context,
-                            const FeaturePlaceholderScreen(
-                              title: 'Enter Exam Marks',
-                              description: 'This screen will write marks to Firestore.',
-                            ),
-                          ),
+                          onTap: () => _open(context, const TeacherExamsScreen()),
                         ),
                         DashboardActionCard(
                           title: 'Send Notifications',

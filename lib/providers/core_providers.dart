@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../services/academic_year_service.dart';
+import '../services/academic_year_admin_service.dart';
 import '../services/attendance_service.dart';
 import '../services/admin_data_service.dart';
 import '../services/admin_service.dart';
@@ -12,6 +13,7 @@ import '../services/notification_service.dart';
 import '../services/notification_local_service.dart';
 import '../services/notification_token_service.dart';
 import '../services/parent_data_service.dart';
+import '../services/student_csv_import_service.dart';
 import '../services/storage_service.dart';
 import '../services/teacher_data_service.dart';
 import '../services/teacher_contact_parents_service.dart';
@@ -34,6 +36,10 @@ final userProfileServiceProvider = Provider<UserProfileService>((ref) {
 
 final academicYearServiceProvider = Provider<AcademicYearService>((ref) {
   return AcademicYearService();
+});
+
+final academicYearAdminServiceProvider = Provider<AcademicYearAdminService>((ref) {
+  return AcademicYearAdminService();
 });
 
 final attendanceServiceProvider = Provider<AttendanceService>((ref) {
@@ -74,6 +80,10 @@ final teacherDirectoryServiceProvider = Provider<TeacherDirectoryService>((ref) 
 
 final parentDataServiceProvider = Provider<ParentDataService>((ref) {
   return ParentDataService();
+});
+
+final studentCsvImportServiceProvider = Provider<StudentCsvImportService>((ref) {
+  return StudentCsvImportService();
 });
 
 final messagingServiceProvider = Provider<MessagingService>((ref) {

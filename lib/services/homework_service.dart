@@ -83,6 +83,7 @@ class HomeworkService {
     String? subject,
     String? type,
     bool onlyActive = true,
+    DateTime? minPublishDate,
   }) {
     Query<Map<String, dynamic>> q = homeworkCollection(schoolId: schoolId, yearId: yearId);
 
@@ -102,8 +103,89 @@ class HomeworkService {
       q = q.where('type', isEqualTo: type.trim());
     }
 
+    if (minPublishDate != null) {
+      final d = DateTime(minPublishDate.year, minPublishDate.month, minPublishDate.day);
+      q = q.where('publishDate', isGreaterThanOrEqualTo: Timestamp.fromDate(d));
+    }
+
     // Default ordering
     q = q.orderBy('publishDate', descending: true);
+
+    return q.snapshots();
+  }
+
+  /// Archives old homework/notes by setting `isActive=false`.
+  ///
+  /// FREE plan friendly alternative to scheduled deletion.
+  /// This keeps documents (and attachments) as history, but hides them from UI.
+  Future<int> archiveOldHomework({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required DateTime cutoffDate,
+    void Function(int done, int total)? onProgress,
+  }) async {
+    final cutoff = DateTime(cutoffDate.year, cutoffDate.month, cutoffDate.day);
+
+    // Query: active + older than cutoff.
+    // Note: Firestore may prompt for a composite index on (isActive, publishDate).
+    Query<Map<String, dynamic>> q = homeworkCollection(schoolId: schoolId, yearId: yearId)
+        .where('isActive', isEqualTo: true)
+        .where('publishDate', isLessThan: Timestamp.fromDate(cutoff))
+        .orderBy('publishDate', descending: false)
+        .limit(200);
+
+    int archived = 0;
+    int done = 0;
+
+    // We don't know total without an extra count query (paid feature on some plans),
+    // so we report (done, -1) style to the UI.
+    while (true) {
+      final snap = await q.get();
+      if (snap.docs.isEmpty) break;
+
+      final batch = _firestore.batch();
+      for (final d in snap.docs) {
+        batch.set(
+          d.reference,
+          {
+            'isActive': false,
+            'archivedAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          },
+          SetOptions(merge: true),
+        );
+      }
+      await batch.commit();
+
+      archived += snap.docs.length;
+      done += snap.docs.length;
+      onProgress?.call(done, -1);
+
+      final last = snap.docs.last;
+      q = homeworkCollection(schoolId: schoolId, yearId: yearId)
+          .where('isActive', isEqualTo: true)
+          .where('publishDate', isLessThan: Timestamp.fromDate(cutoff))
+          .orderBy('publishDate', descending: false)
+          .startAfterDocument(last)
+          .limit(200);
+    }
+
+    return archived;
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchOldActiveHomework({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required DateTime cutoffDate,
+    int limit = 50,
+  }) {
+    final cutoff = DateTime(cutoffDate.year, cutoffDate.month, cutoffDate.day);
+
+    Query<Map<String, dynamic>> q = homeworkCollection(schoolId: schoolId, yearId: yearId)
+        .where('isActive', isEqualTo: true)
+        .where('publishDate', isLessThan: Timestamp.fromDate(cutoff))
+        .orderBy('publishDate', descending: true)
+        .limit(limit);
 
     return q.snapshots();
   }

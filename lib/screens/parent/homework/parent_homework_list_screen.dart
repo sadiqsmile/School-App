@@ -181,6 +181,7 @@ class _ParentHomeworkListScreenState extends ConsumerState<ParentHomeworkListScr
                         subject: _subject,
                         type: _type,
                         onlyActive: true, // parents see only active
+                    minPublishDate: DateTime.now().subtract(const Duration(days: 30)),
                       );
 
                   return Column(
