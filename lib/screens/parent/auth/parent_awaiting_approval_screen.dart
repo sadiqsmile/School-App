@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class ParentAwaitingApprovalScreen extends StatefulWidget {
-  const ParentAwaitingApprovalScreen({Key? key}) : super(key: key);
+  // ignore: use_super_parameters
+  const ParentAwaitingApprovalScreen({super.key});
 
   @override
   State<ParentAwaitingApprovalScreen> createState() => _ParentAwaitingApprovalScreenState();

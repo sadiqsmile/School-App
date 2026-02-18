@@ -26,7 +26,6 @@ class AppTheme {
         secondary: secondaryColor,
         tertiary: tertiaryColor,
         surface: surfaceColor,
-        background: backgroundColor,
         error: errorColor,
       ),
       scaffoldBackgroundColor: backgroundColor,
@@ -44,12 +43,12 @@ class AppTheme {
       ),
 
       // Card styling
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 1,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         color: surfaceColor,
         margin: EdgeInsets.zero,
-        shadowColor: Colors.black.withOpacity(0.08),
+        shadowColor: Colors.black.withValues(alpha: 0.08),
       ),
 
       // Button styling
@@ -114,8 +113,8 @@ class AppTheme {
         ),
         labelStyle: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500),
         hintStyle: TextStyle(color: Colors.grey.shade500),
-        prefixIconColor: MaterialState.resolveWith((states) {
-          if (states.contains(MaterialState.focused)) return primaryColor;
+        prefixIconColor: WidgetStateColor.resolveWith((states) {
+          if (states.contains(WidgetState.focused)) return primaryColor;
           return Colors.grey;
         }),
       ),
@@ -181,7 +180,7 @@ class AppTheme {
       ),
 
       // Dialog styling
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         elevation: 8,
         backgroundColor: surfaceColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -214,7 +213,7 @@ class AppTheme {
   static List<BoxShadow> elevatedShadow() {
     return [
       BoxShadow(
-        color: Colors.black.withOpacity(0.08),
+        color: Colors.black.withValues(alpha: 0.08),
         offset: const Offset(0, 4),
         blurRadius: 12,
       ),
@@ -225,7 +224,7 @@ class AppTheme {
   static List<BoxShadow> lightShadow() {
     return [
       BoxShadow(
-        color: Colors.black.withOpacity(0.04),
+        color: Colors.black.withValues(alpha: 0.04),
         offset: const Offset(0, 2),
         blurRadius: 4,
       ),
@@ -237,7 +236,7 @@ class AppTheme {
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [primaryColor, primaryColor.withOpacity(0.8)],
+      colors: [primaryColor, primaryColor.withValues(alpha: 0.8)],
     );
   }
 
@@ -245,7 +244,8 @@ class AppTheme {
     return LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [successColor, successColor.withOpacity(0.8)],
+      colors: [successColor, successColor.withValues(alpha: 0.8)],
     );
   }
 }
+

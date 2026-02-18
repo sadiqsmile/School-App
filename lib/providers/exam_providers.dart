@@ -343,9 +343,7 @@ final watchStudentExamMarksProvider = StreamProvider.family<
         .snapshots()
         .map((doc) {
       if (doc.exists) {
-        return ExamMarksResult.fromDoc(
-          doc as DocumentSnapshot<Map<String, dynamic>>,
-        );
+        return ExamMarksResult.fromDoc(doc);
       }
       return null;
     });
@@ -364,9 +362,7 @@ final watchTeacherAssignmentProvider =
         .snapshots()
         .map((doc) {
       if (doc.exists) {
-        return TeacherSubjectAssignment.fromDoc(
-          doc as DocumentSnapshot<Map<String, dynamic>>,
-        );
+        return TeacherSubjectAssignment.fromDoc(doc);
       }
       return null;
     });

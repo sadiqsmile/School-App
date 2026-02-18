@@ -96,16 +96,14 @@ class OptimizedImage extends StatelessWidget {
   final double? width;
   final double? height;
   final BoxFit fit;
-  final Duration fadeInDuration;
 
   const OptimizedImage(
     this.imageUrl, {
-    Key? key,
+    super.key,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
-    this.fadeInDuration = const Duration(milliseconds: 300),
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +112,6 @@ class OptimizedImage extends StatelessWidget {
       width: width,
       height: height,
       fit: fit,
-      fadeInDuration: fadeInDuration,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
         return Container(
@@ -139,22 +136,22 @@ class OptimizedImage extends StatelessWidget {
 }
 
 /// Lazy loading list view
-class LazyLoadingListView extends StatefulWidget {
+class LazyLoadingListView<T> extends StatefulWidget {
   final Future<List<T>> Function(int page) onLoadMore;
   final Widget Function(BuildContext, int, T) itemBuilder;
   final int pageSize;
   final Widget? separator;
 
-  const LazyLoadingListView<T>({
-    Key? key,
+  const LazyLoadingListView({
+    super.key,
     required this.onLoadMore,
     required this.itemBuilder,
     this.pageSize = 20,
     this.separator,
-  }) : super(key: key);
+  });
 
   @override
-  State<LazyLoadingListView> createState() => _LazyLoadingListViewState<T>();
+  State<LazyLoadingListView<T>> createState() => _LazyLoadingListViewState<T>();
 }
 
 class _LazyLoadingListViewState<T> extends State<LazyLoadingListView<T>> {
@@ -218,7 +215,7 @@ class _LazyLoadingListViewState<T> extends State<LazyLoadingListView<T>> {
     return ListView.separated(
       controller: _scrollController,
       itemCount: items.length + (_isLoading ? 1 : 0) + (_hasMore ? 1 : 0),
-      separatorBuilder: (_, __) => widget.separator ?? const SizedBox.shrink(),
+      separatorBuilder: (context, index) => widget.separator ?? const SizedBox.shrink(),
       itemBuilder: (context, index) {
         if (index >= items.length) {
           return const Padding(

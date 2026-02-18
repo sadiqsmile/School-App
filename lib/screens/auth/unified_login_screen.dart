@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
@@ -8,7 +9,7 @@ import 'dart:ui' as ui;
 import '../../providers/core_providers.dart';
 import '../../utils/app_animations.dart';
 
-enum LoginTab { parent, teacher, admin, student }
+enum LoginTab { parent, teacher, admin }
 
 class UnifiedLoginScreen extends ConsumerStatefulWidget {
   const UnifiedLoginScreen({super.key, this.initialTab = LoginTab.parent});
@@ -44,14 +45,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
   bool _adminObscure = true;
   bool _adminLoading = false;
 
-  // Student
-  final _studentFormKey = GlobalKey<FormState>();
-  final _studentEmailController = TextEditingController();
-  final _studentPasswordController = TextEditingController();
-  bool _studentObscure = true;
-  bool _studentLoading = false;
-
-  bool get _anyLoading => _parentLoading || _teacherLoading || _adminLoading || _studentLoading;
+  bool get _anyLoading => _parentLoading || _teacherLoading || _adminLoading;
 
   @override
   void initState() {
@@ -75,8 +69,6 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     _teacherPasswordController.dispose();
     _adminEmailController.dispose();
     _adminPasswordController.dispose();
-    _studentEmailController.dispose();
-    _studentPasswordController.dispose();
     super.dispose();
   }
 
@@ -219,26 +211,22 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     }
   }
 
-  Future<void> _signInStudent() async {
-    if (!(_studentFormKey.currentState?.validate() ?? false)) return;
-    setState(() => _studentLoading = true);
-    try {
-      await ref.read(authServiceProvider).signInEmail(
-            email: _studentEmailController.text.trim(),
-            password: _studentPasswordController.text,
-          );
-    } catch (e) {
-      if (!mounted) return;
-      _snack(_prettyError(e));
-    } finally {
-      if (mounted) setState(() => _studentLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final screenWidth = media.size.width;
+    final isDesktop = screenWidth >= 1000;
+
+    // Responsive max width: slimmer on desktop web, comfortably sized on mobile.
+    final maxContentWidth = isDesktop ? 560.0 : 720.0;
+    final horizontalPadding = isDesktop ? 24.0 : 20.0;
+
     return Scaffold(
-      appBar: AppBar(elevation: 0, backgroundColor: Colors.transparent),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+      ),
       backgroundColor: const Color(0xFFFAFBFC),
       extendBodyBehindAppBar: true,
       body: Stack(
@@ -246,7 +234,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
           // Animated gradient background
           _AnimatedGradientBackground(),
 
-          // Floating blur blobs (glassmorphic effect)
+          // Subtle decorative blobs (glassy effect)
           Positioned(
             top: -100,
             right: -100,
@@ -257,102 +245,112 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
             left: -80,
             child: _BlurBlob(size: 280, color: Colors.purple.withValues(alpha: 0.12)),
           ),
+          Positioned(
+            top: 120,
+            left: -120,
+            child: _BlurBlob(size: 240, color: Colors.teal.withValues(alpha: 0.10)),
+          ),
+          Positioned(
+            bottom: 120,
+            right: -140,
+            child: _BlurBlob(size: 260, color: Colors.indigo.withValues(alpha: 0.09)),
+          ),
 
           // Main content
           SafeArea(
             child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header with animation
-                    AppAnimations.fadeInUp(
-                      child: _PremiumHeader(),
-                    ),
-                    const SizedBox(height: 32),
+                padding: EdgeInsets.symmetric(
+                  horizontal: horizontalPadding,
+                  vertical: isDesktop ? 28 : 20,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(maxWidth: maxContentWidth),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Header with animation
+                        AppAnimations.fadeInUp(
+                          child: _PremiumHeader(),
+                        ),
+                        const SizedBox(height: 26),
 
-                    // Role selector with animation
-                    AppAnimations.fadeInUp(
-                      child: _ModernRoleSelector(
-                        value: _tab,
-                        onChanged: _anyLoading ? null : (v) => setState(() => _tab = v),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
+                        // Role selector with animation
+                        AppAnimations.fadeInUp(
+                          child: _ModernRoleSelector(
+                            value: _tab,
+                            onChanged: _anyLoading ? null : (v) => setState(() => _tab = v),
+                          ),
+                        ),
+                        const SizedBox(height: 22),
 
-                    // Form switcher with animation
-                    AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) {
-                        return SlideTransition(
-                          position: Tween<Offset>(begin: const Offset(0.2, 0), end: Offset.zero)
-                              .animate(animation),
-                          child: FadeTransition(opacity: animation, child: child),
-                        );
-                      },
-                      child: switch (_tab) {
-                        LoginTab.parent => _PremiumParentForm(
-                            key: const ValueKey('parent'),
-                            formKey: _parentFormKey,
-                            phoneController: _parentPhoneController,
-                            passwordController: _parentPasswordController,
-                            loading: _parentLoading,
-                            obscure: _parentObscure,
-                            statusMessage: _parentStatus,
-                            onToggleObscure: () =>
-                                setState(() => _parentObscure = !_parentObscure),
-                            onSubmit: _signInParent,
-                            onHelpTap: () => _showHelpDialog(context),
-                          ),
-                        LoginTab.teacher => _PremiumEmailForm(
-                            key: const ValueKey('teacher'),
-                            title: 'Teacher Login',
-                            formKey: _teacherFormKey,
-                            emailController: _teacherEmailController,
-                            passwordController: _teacherPasswordController,
-                            loading: _teacherLoading,
-                            obscure: _teacherObscure,
-                            onToggleObscure: () =>
-                                setState(() => _teacherObscure = !_teacherObscure),
-                            onSubmit: _signInTeacher,
-                            onHelpTap: () => _showHelpDialog(context),
-                          ),
-                        LoginTab.admin => _PremiumEmailForm(
-                            key: const ValueKey('admin'),
-                            title: 'Admin Login',
-                            formKey: _adminFormKey,
-                            emailController: _adminEmailController,
-                            passwordController: _adminPasswordController,
-                            loading: _adminLoading,
-                            obscure: _adminObscure,
-                            onToggleObscure: () => setState(() => _adminObscure = !_adminObscure),
-                            onSubmit: _signInAdmin,
-                            onHelpTap: () => _showHelpDialog(context),
-                          ),
-                        LoginTab.student => _PremiumEmailForm(
-                            key: const ValueKey('student'),
-                            title: 'Student Login',
-                            formKey: _studentFormKey,
-                            emailController: _studentEmailController,
-                            passwordController: _studentPasswordController,
-                            loading: _studentLoading,
-                            obscure: _studentObscure,
-                            onToggleObscure: () =>
-                                setState(() => _studentObscure = !_studentObscure),
-                            onSubmit: _signInStudent,
-                            onHelpTap: () => _showHelpDialog(context),
-                          ),
-                      },
-                    ),
-                    const SizedBox(height: 24),
+                        // Form switcher with animation
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          switchInCurve: Curves.easeOut,
+                          switchOutCurve: Curves.easeIn,
+                          transitionBuilder: (child, animation) {
+                            return SlideTransition(
+                              position: Tween<Offset>(
+                                begin: const Offset(0.2, 0),
+                                end: Offset.zero,
+                              ).animate(animation),
+                              child: FadeTransition(opacity: animation, child: child),
+                            );
+                          },
+                          child: switch (_tab) {
+                            LoginTab.parent => _PremiumParentForm(
+                                key: const ValueKey('parent'),
+                                formKey: _parentFormKey,
+                                phoneController: _parentPhoneController,
+                                passwordController: _parentPasswordController,
+                                loading: _parentLoading,
+                                obscure: _parentObscure,
+                                statusMessage: _parentStatus,
+                                onToggleObscure: () =>
+                                    setState(() => _parentObscure = !_parentObscure),
+                                onSubmit: _signInParent,
+                                onHelpTap: () => _showHelpDialog(context),
+                              ),
+                            LoginTab.teacher => _PremiumEmailForm(
+                                key: const ValueKey('teacher'),
+                                title: 'Teacher Login',
+                                formKey: _teacherFormKey,
+                                emailController: _teacherEmailController,
+                                passwordController: _teacherPasswordController,
+                                loading: _teacherLoading,
+                                obscure: _teacherObscure,
+                                statusText: _teacherLoading ? 'Signing in…' : null,
+                                onToggleObscure: () =>
+                                    setState(() => _teacherObscure = !_teacherObscure),
+                                onSubmit: _signInTeacher,
+                                onHelpTap: () => _showHelpDialog(context),
+                              ),
+                            LoginTab.admin => _PremiumEmailForm(
+                                key: const ValueKey('admin'),
+                                title: 'Admin Login',
+                                formKey: _adminFormKey,
+                                emailController: _adminEmailController,
+                                passwordController: _adminPasswordController,
+                                loading: _adminLoading,
+                                obscure: _adminObscure,
+                                statusText: _adminLoading ? 'Signing in…' : null,
+                                onToggleObscure: () =>
+                                    setState(() => _adminObscure = !_adminObscure),
+                                onSubmit: _signInAdmin,
+                                onHelpTap: () => _showHelpDialog(context),
+                              ),
+                          },
+                        ),
+                        const SizedBox(height: 24),
 
-                    // Footer
-                    _PremiumFooter(),
-                  ],
+                        // Footer
+                        _PremiumFooter(),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -403,15 +401,75 @@ class _AnimatedGradientBackgroundState extends State<_AnimatedGradientBackground
               begin: Alignment(offset * 2 - 1, -1),
               end: Alignment(-offset * 2 + 1, 1),
               colors: [
-                const Color(0xFF1F7FB8).withValues(alpha: 0.08),
-                const Color(0xFF26A69A).withValues(alpha: 0.06),
-                const Color(0xFF6366F1).withValues(alpha: 0.05),
+                const Color(0xFF1F7FB8).withValues(alpha: 0.10),
+                const Color(0xFF26A69A).withValues(alpha: 0.08),
+                const Color(0xFF8B5CF6).withValues(alpha: 0.06),
+                const Color(0xFF0EA5E9).withValues(alpha: 0.06),
               ],
             ),
           ),
         );
       },
     );
+  }
+}
+
+class _HoverScale extends StatefulWidget {
+  const _HoverScale({required this.child, this.enabled = true, this.onTap});
+
+  final Widget child;
+  final bool enabled;
+  final VoidCallback? onTap;
+
+  @override
+  State<_HoverScale> createState() => _HoverScaleState();
+}
+
+class _HoverScaleState extends State<_HoverScale> {
+  bool _hovering = false;
+
+  bool get _supportsHover {
+    if (kIsWeb) return true;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+        return true;
+      case TargetPlatform.android:
+      case TargetPlatform.iOS:
+      case TargetPlatform.fuchsia:
+        return false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enableHover = widget.enabled && _supportsHover;
+
+    Widget content = AnimatedScale(
+      scale: (_hovering && enableHover) ? 1.015 : 1.0,
+      duration: const Duration(milliseconds: 140),
+      curve: Curves.easeOut,
+      child: widget.child,
+    );
+
+    if (enableHover) {
+      content = MouseRegion(
+        onEnter: (_) => setState(() => _hovering = true),
+        onExit: (_) => setState(() => _hovering = false),
+        child: content,
+      );
+    }
+
+    if (widget.onTap != null) {
+      content = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: content,
+      );
+    }
+
+    return content;
   }
 }
 
@@ -477,41 +535,97 @@ class _BlurBlobState extends State<_BlurBlob> with TickerProviderStateMixin {
 class _PremiumHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    // Branding logo:
+    // Preferred: assets/images/logo.png (per requirements)
+    // Fallback: assets/images/school_logo.png (older path)
+    const primaryLogoAssetPath = 'assets/images/logo.png';
+    const fallbackLogoAssetPath = 'assets/images/school_logo.png';
+
+    final media = MediaQuery.of(context);
+    final dpr = media.devicePixelRatio;
+    final isCompact = media.size.width < 360;
+
+    // Keep logo larger so the fine text/details remain readable.
+    final logoBadgeSize = isCompact ? 96.0 : 124.0;
+    final logoImageSize = isCompact ? 80.0 : 108.0;
+    final cachePx = (logoImageSize * dpr).round();
+
     return Column(
       children: [
-        // Logo placeholder or icon
-        Container(
-          width: 80,
-          height: 80,
+        // Logo (asset) with graceful fallback
+        RepaintBoundary(
+          child: Container(
+            width: logoBadgeSize,
+            height: logoBadgeSize,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                const Color(0xFF1F7FB8).withValues(alpha: 0.3),
-                const Color(0xFF26A69A).withValues(alpha: 0.2),
-              ],
+              color: Colors.white.withValues(alpha: 0.92),
+              border: Border.all(color: Colors.black.withValues(alpha: 0.10)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 18,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+          child: ClipOval(
+            child: ColoredBox(
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Center(
+                  child: SizedBox(
+                      width: logoImageSize,
+                      height: logoImageSize,
+                    child: Image.asset(
+                        primaryLogoAssetPath,
+                      fit: BoxFit.contain,
+                      filterQuality: FilterQuality.high,
+                      isAntiAlias: true,
+                        cacheWidth: cachePx,
+                        cacheHeight: cachePx,
+                        gaplessPlayback: true,
+                      errorBuilder: (context, error, stackTrace) {
+                          // If primary logo doesn't exist, try fallback.
+                          return Image.asset(
+                            fallbackLogoAssetPath,
+                            fit: BoxFit.contain,
+                            filterQuality: FilterQuality.high,
+                            isAntiAlias: true,
+                            cacheWidth: cachePx,
+                            cacheHeight: cachePx,
+                            gaplessPlayback: true,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Center(
+                                child: Icon(
+                                  Icons.school,
+                                  size: 44,
+                                  color: const Color(0xFF1F7FB8),
+                                ),
+                              );
+                            },
+                          );
+                      },
+                    ),
+                  ),
+                ),
+              ),
             ),
           ),
-          child: Center(
-            child: Icon(
-              Icons.school,
-              size: 44,
-              color: const Color(0xFF1F7FB8),
-            ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Text(
-          'Hongirana School',
-          style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.5,
+          'Hongirana School of Excellence',
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.6,
                 color: const Color(0xFF0F1419),
               ),
           textAlign: TextAlign.center,
         ),
+        const SizedBox(height: 6),
         const SizedBox(height: 8),
         Text(
           'Welcome back',
@@ -550,68 +664,63 @@ class _ModernRoleSelector extends StatelessWidget {
       final colors = _getRoleColors(tab);
 
       return Expanded(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOut,
-          decoration: BoxDecoration(
-            gradient: isSelected
-                ? LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [colors['gradient1']!, colors['gradient2']!],
-                  )
-                : null,
-            color: isSelected ? null : const Color(0xFFF5F5F5),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isSelected ? colors['border']! : const Color(0xFFE0E0E0),
-              width: isSelected ? 2 : 1,
+        child: _HoverScale(
+          enabled: onChanged != null,
+          onTap: onChanged == null ? null : () => onChanged!(tab),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOut,
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [colors['gradient1']!, colors['gradient2']!],
+                    )
+                  : null,
+              color: isSelected ? null : Colors.white.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: isSelected
+                    ? colors['border']!
+                    : Colors.white.withValues(alpha: 0.45),
+                width: isSelected ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (isSelected ? colors['shadow']! : Colors.black)
+                      .withValues(alpha: isSelected ? 0.22 : 0.06),
+                  blurRadius: isSelected ? 22 : 10,
+                  offset: const Offset(0, 10),
+                ),
+              ],
             ),
-            boxShadow: isSelected
-                ? [
-                    BoxShadow(
-                      color: colors['shadow']!.withValues(alpha: 0.25),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ]
-                : null,
-          ),
-          child: Material(
-            type: MaterialType.transparency,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: onChanged == null ? null : () => onChanged!(tab),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isMobile ? 6 : 10,
-                  vertical: 12,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 24,
-                      color: isSelected
-                          ? Colors.white
-                          : const Color(0xFF5F6368),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                            color: isSelected
-                                ? Colors.white
-                                : const Color(0xFF5F6368),
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                            letterSpacing: 0.3,
-                          ),
-                    ),
-                  ],
-                ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 10 : 12,
+                vertical: 14,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 24,
+                    color: isSelected ? Colors.white : const Color(0xFF5F6368),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color:
+                              isSelected ? Colors.white : const Color(0xFF5F6368),
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -621,11 +730,9 @@ class _ModernRoleSelector extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.3),
-        ),
+        color: Colors.white.withValues(alpha: 0.35),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -643,8 +750,6 @@ class _ModernRoleSelector extends StatelessWidget {
             pill(tab: LoginTab.teacher, label: 'Teacher', icon: Icons.school_outlined),
             const SizedBox(width: 8),
             pill(tab: LoginTab.admin, label: 'Admin', icon: Icons.admin_panel_settings_outlined),
-            const SizedBox(width: 8),
-            pill(tab: LoginTab.student, label: 'Student', icon: Icons.person_outline),
           ],
         ),
       ),
@@ -671,12 +776,6 @@ class _ModernRoleSelector extends StatelessWidget {
           'border': const Color(0xFFF57C00),
           'shadow': const Color(0xFFFFA726),
         },
-      LoginTab.student => {
-          'gradient1': const Color(0xFFAB47BC),
-          'gradient2': const Color(0xFF9C27B0),
-          'border': const Color(0xFF7B1FA2),
-          'shadow': const Color(0xFFAB47BC),
-        },
     };
   }
 }
@@ -692,15 +791,22 @@ class _GlassmorphicCard extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(24),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: Container(
           padding: const EdgeInsets.all(28),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.white.withValues(alpha: 0.82),
+                Colors.white.withValues(alpha: 0.70),
+              ],
+            ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.4),
-              width: 1.5,
+              color: Colors.white.withValues(alpha: 0.55),
+              width: 1.4,
             ),
             boxShadow: [
               BoxShadow(
@@ -731,59 +837,73 @@ class _PremiumButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 54,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF1F7FB8),
-            const Color(0xFF1565A0),
+    final enabled = onPressed != null && !loading;
+
+    return _HoverScale(
+      enabled: enabled,
+      onTap: onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        height: 58,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: enabled
+                ? [
+                    const Color(0xFF1F7FB8),
+                    const Color(0xFF1565A0),
+                  ]
+                : [
+                    const Color(0xFF1F7FB8).withValues(alpha: 0.55),
+                    const Color(0xFF1565A0).withValues(alpha: 0.55),
+                  ],
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF1F7FB8)
+                  .withValues(alpha: enabled ? 0.30 : 0.12),
+              blurRadius: enabled ? 18 : 10,
+              offset: const Offset(0, 10),
+            ),
           ],
         ),
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF1F7FB8).withValues(alpha: 0.3),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Material(
-        type: MaterialType.transparency,
-        child: InkWell(
-          onTap: onPressed,
-          borderRadius: BorderRadius.circular(14),
-          child: Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (loading) ...[
-                  SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2.5,
-                      valueColor: AlwaysStoppedAnimation(
-                        Colors.white.withValues(alpha: 0.9),
+        child: Material(
+          type: MaterialType.transparency,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(18),
+            child: Center(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (loading) ...[
+                    SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.6,
+                        valueColor: AlwaysStoppedAnimation(
+                          Colors.white.withValues(alpha: 0.95),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const Icon(Icons.login, color: Colors.white, size: 21),
                   const SizedBox(width: 10),
-                ] else
-                  const Icon(Icons.login, color: Colors.white, size: 20),
-                const SizedBox(width: 8),
-                Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                ),
-              ],
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -997,7 +1117,7 @@ class _PremiumParentForm extends StatelessWidget {
   }
 }
 
-/// Premium email login form (for teacher, admin, student)
+/// Premium email login form (for teacher and admin)
 class _PremiumEmailForm extends StatelessWidget {
   final String title;
   final GlobalKey<FormState> formKey;
@@ -1005,6 +1125,7 @@ class _PremiumEmailForm extends StatelessWidget {
   final TextEditingController passwordController;
   final bool loading;
   final bool obscure;
+  final String? statusText;
   final VoidCallback onToggleObscure;
   final VoidCallback onSubmit;
   final VoidCallback onHelpTap;
@@ -1017,6 +1138,7 @@ class _PremiumEmailForm extends StatelessWidget {
     required this.passwordController,
     required this.loading,
     required this.obscure,
+    required this.statusText,
     required this.onToggleObscure,
     required this.onSubmit,
     required this.onHelpTap,
@@ -1101,6 +1223,44 @@ class _PremiumEmailForm extends StatelessWidget {
               onPressed: loading ? null : onSubmit,
             ),
 
+            if (loading && (statusText ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F7FB8).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF1F7FB8).withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation(Color(0xFF1F7FB8)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        statusText!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF1F7FB8),
+                              fontWeight: FontWeight.w600,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 12),
 
             // Forgot password text button
@@ -1110,10 +1270,10 @@ class _PremiumEmailForm extends StatelessWidget {
                   const SnackBar(content: Text('Password reset coming soon')),
                 );
               },
-              child: const Text('Forgot password?'),
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF1F7FB8),
               ),
+              child: const Text('Forgot password?'),
             ),
 
             const SizedBox(height: 6),
@@ -1180,7 +1340,7 @@ class _PremiumFooter extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          '© 2026 Hongirana School',
+          '© 2026 Hongirana School of Excellence',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: const Color(0xFF99A3A0),
                 fontSize: 12,

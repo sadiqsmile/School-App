@@ -22,7 +22,6 @@ class StudentDashboard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
     final authUserAsync = ref.watch(firebaseAuthUserProvider);
-    final appUserAsync = ref.watch(appUserProvider);
 
     final authUser = authUserAsync.asData?.value;
 
@@ -62,16 +61,8 @@ class StudentDashboard extends ConsumerWidget {
               SliverToBoxAdapter(
                 child: yearAsync.when(
                   data: (yearId) {
-                    const size = 80.0;
                     const gap = 16.0;
-
-                    final scheme = Theme.of(context).colorScheme;
-                    final width = MediaQuery.sizeOf(context).width;
-                    final crossAxisCount = width >= 900
-                        ? 3
-                        : width >= 560
-                            ? 2
-                            : 1;
+                    // GridView.extent adapts automatically; no need for an explicit width.
 
                     return Padding(
                       padding: const EdgeInsets.all(16),
@@ -128,7 +119,7 @@ class StudentDashboard extends ConsumerWidget {
                             color: Colors.red,
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => const NotificationInboxScreen(),
+                                builder: (_) => const NotificationInboxScreen(viewerRole: UserRole.student),
                               ),
                             ),
                           ),
@@ -187,7 +178,7 @@ class _DashboardCard extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             gradient: LinearGradient(
-              colors: [color.withOpacity(0.7), color],
+              colors: [color.withValues(alpha: 0.7), color],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),

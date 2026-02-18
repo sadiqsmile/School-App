@@ -12,7 +12,7 @@ class ModernCard extends StatelessWidget {
   final BorderSide? border;
 
   const ModernCard({
-    Key? key,
+    super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
     this.margin = const EdgeInsets.all(0),
@@ -21,7 +21,7 @@ class ModernCard extends StatelessWidget {
     this.borderRadius = 12,
     this.onTap,
     this.border,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -32,10 +32,10 @@ class ModernCard extends StatelessWidget {
         color: gradient == null ? (backgroundColor ?? Colors.white) : null,
         gradient: gradient,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: border,
+        border: border == null ? null : Border.fromBorderSide(border!),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             offset: const Offset(0, 2),
             blurRadius: 8,
           ),
@@ -66,13 +66,13 @@ class EmptyStateWidget extends StatelessWidget {
   final Widget? action;
 
   const EmptyStateWidget({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.subtitle,
     this.iconColor,
     this.action,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -83,7 +83,7 @@ class EmptyStateWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: (iconColor ?? Colors.blue).withOpacity(0.1),
+              color: (iconColor ?? Colors.blue).withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
@@ -125,12 +125,12 @@ class ErrorStateWidget extends StatelessWidget {
   final IconData icon;
 
   const ErrorStateWidget({
-    Key? key,
+    super.key,
     required this.title,
     required this.message,
     this.onRetry,
     this.icon = Icons.error_outline,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -143,7 +143,7 @@ class ErrorStateWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.1),
+                color: Colors.red.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -187,10 +187,10 @@ class LoadingStateWidget extends StatelessWidget {
   final bool showBackground;
 
   const LoadingStateWidget({
-    Key? key,
+    super.key,
     this.message,
     this.showBackground = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -200,7 +200,7 @@ class LoadingStateWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Colors.blue.withOpacity(0.1),
+            color: Colors.blue.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: const CircularProgressIndicator(
@@ -235,13 +235,13 @@ class ModernHeader extends StatelessWidget {
   final Gradient? gradient;
 
   const ModernHeader({
-    Key? key,
+    super.key,
     required this.title,
     this.subtitle,
     this.action,
     this.backgroundColor,
     this.gradient,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -273,19 +273,20 @@ class ModernHeader extends StatelessWidget {
                               fontWeight: FontWeight.bold,
                             ),
                       ),
+                      // ignore: use_null_aware_elements
                       if (subtitle != null) ...[
                         const SizedBox(height: 4),
                         Text(
                           subtitle!,
                           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                color: Colors.white.withOpacity(0.9),
+                                color: Colors.white.withValues(alpha: 0.9),
                               ),
                         ),
                       ],
                     ],
                   ),
                 ),
-                if (action != null) action!,
+                ?action,
               ],
             ),
           ],
@@ -304,13 +305,13 @@ class InfoCard extends StatelessWidget {
   final double? width;
 
   const InfoCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.title,
     required this.value,
     this.color,
     this.width,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -323,7 +324,7 @@ class InfoCard extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             cardColor,
-            cardColor.withOpacity(0.8),
+            cardColor.withValues(alpha: 0.8),
           ],
         ),
         padding: const EdgeInsets.all(16),
@@ -333,7 +334,7 @@ class InfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.white.withValues(alpha: 0.2),
                 shape: BoxShape.circle,
               ),
               child: Icon(
@@ -375,12 +376,12 @@ class StatusBadge extends StatelessWidget {
   final IconData? icon;
 
   const StatusBadge({
-    Key? key,
+    super.key,
     required this.label,
     this.backgroundColor,
     this.textColor,
     this.icon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -390,9 +391,9 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: bgColor.withOpacity(0.15),
+        color: bgColor.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: bgColor.withOpacity(0.5)),
+        border: Border.all(color: bgColor.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -404,7 +405,7 @@ class StatusBadge extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: bgColor,
+              color: textCol,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -421,10 +422,10 @@ class LabeledDivider extends StatelessWidget {
   final Color? color;
 
   const LabeledDivider({
-    Key? key,
+    super.key,
     required this.label,
     this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

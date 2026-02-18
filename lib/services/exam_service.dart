@@ -475,6 +475,58 @@ class ExamService {
     await _commitInChunks(writes);
   }
 
+  /// Set publish status for a single class-section.
+  ///
+  /// - When publishing (isPublished=true), we enforce the same rule as
+  ///   [publishResultsForClassSection]: every result must be approved.
+  /// - When unpublishing (isPublished=false), we simply set isPublished=false.
+  Future<void> setResultsPublishedForClassSection({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String examId,
+    required String classId,
+    required String sectionId,
+    required bool isPublished,
+    String? publishedByUid,
+  }) async {
+    final cleanedClass = classId.trim();
+    final cleanedSection = sectionId.trim();
+    if (cleanedClass.isEmpty) throw Exception('Class is required');
+    if (cleanedSection.isEmpty) throw Exception('Section is required');
+
+    final snap = await resultsCol(schoolId: schoolId, yearId: yearId, examId: examId)
+        .where('class', isEqualTo: cleanedClass)
+        .where('section', isEqualTo: cleanedSection)
+        .get();
+
+    if (isPublished) {
+      // Enforce approval before publishing.
+      for (final d in snap.docs) {
+        if ((d['isApproved'] ?? false) != true) {
+          throw Exception('Cannot publish: not all results are approved');
+        }
+      }
+    }
+
+    final writes = <MapEntry<DocumentReference<Map<String, dynamic>>, Map<String, Object?>>>[];
+    for (final d in snap.docs) {
+      final payload = <String, Object?>{
+        'isPublished': isPublished,
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+      if (isPublished) {
+        payload['publishedByUid'] = (publishedByUid ?? '').trim().isEmpty ? null : publishedByUid;
+        payload['publishedAt'] = FieldValue.serverTimestamp();
+      } else {
+        payload['publishedByUid'] = FieldValue.delete();
+        payload['publishedAt'] = FieldValue.delete();
+      }
+      writes.add(MapEntry(d.reference, payload));
+    }
+
+    await _commitInChunks(writes);
+  }
+
   /// Exam-wide publish toggle.
   ///
   /// NOTE: This may involve many writes. We chunk writes, but on a large school

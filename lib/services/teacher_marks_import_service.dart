@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../config/app_config.dart';
 import '../features/csv/exam_marks_csv.dart';
 import '../models/exam_marks_import_result.dart';
-import '../models/exam_marks_result.dart';
 
 /// Service for teachers to import marks for their subjects only
 /// Teachers can only update marks for their assigned subjects

@@ -9,7 +9,6 @@ import '../screens/auth/unified_login_screen.dart';
 import '../screens/dashboards/admin_dashboard.dart';
 import '../screens/dashboards/parent_dashboard.dart';
 import '../screens/dashboards/teacher_dashboard.dart';
-import '../screens/dashboards/student_dashboard.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/parent/auth/parent_awaiting_approval_screen.dart';
 import '../screens/parent/auth/parent_force_password_change_screen.dart';
@@ -98,11 +97,19 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return state.matchedLocation == '/' ? null : '/';
       }
 
+      // Student login is no longer supported in the app.
+      // If a student-role profile exists for a signed-in Firebase user (e.g. stale session),
+      // sign out and send them back to the unified login screen.
+      if (appUser.role == UserRole.student) {
+        await FirebaseAuth.instance.signOut();
+        return '/login';
+      }
+
       final targetBase = switch (appUser.role) {
         UserRole.parent => '/parent',
         UserRole.teacher => '/teacher',
         UserRole.admin => '/admin',
-        UserRole.student => '/student',
+        UserRole.student => '/login',
       };
 
       // Keep users inside their dashboard namespace.
@@ -165,10 +172,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin',
         builder: (context, state) => const AdminDashboard(),
-      ),
-      GoRoute(
-        path: '/student',
-        builder: (context, state) => const StudentDashboard(),
       ),
     ],
   );

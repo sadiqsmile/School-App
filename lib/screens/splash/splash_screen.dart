@@ -36,6 +36,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
       _navigated = true;
 
+      // Student login is no longer supported. If a student-role profile exists for this
+      // signed-in user, sign out and send them back to the login screen.
+      if (user.role == UserRole.student) {
+        unawaited(ref.read(authServiceProvider).signOut());
+        if (mounted) context.go('/login');
+        return;
+      }
+
       unawaited(
         ref.read(messagingServiceProvider).initForSignedInUser(uid: user.uid),
       );
@@ -53,7 +61,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
           context.go('/admin');
           break;
         case UserRole.student:
-          context.go('/student');
+          // Handled above (student login is not supported).
           break;
       }
     }, fireImmediately: true);

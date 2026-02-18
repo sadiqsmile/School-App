@@ -43,3 +43,10 @@ git pull
 
 flutter devices
 flutter run -d (device name)
+
+________________________________________________________________________
+
+Flutter analyze
+Flutter pub get
+Flutter build web --release
+Firebase deploy --only hosting

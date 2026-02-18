@@ -167,6 +167,7 @@ class _AdminPublishResultsScreenState extends ConsumerState<AdminPublishResultsS
             classId: c,
             sectionId: s,
             isPublished: publish,
+        publishedByUid: publish ? ref.read(firebaseAuthUserProvider).asData?.value?.uid : null,
           );
       if (!mounted) return;
       _snack(publish ? 'Class results published' : 'Class results unpublished');

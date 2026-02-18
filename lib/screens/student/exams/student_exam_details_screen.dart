@@ -6,11 +6,11 @@ import '../../../models/exam_result.dart';
 import '../../../models/exam_timetable.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/core_providers.dart';
-import '../../../providers/exam_providers.dart';
 import '../../../widgets/loading_view.dart';
 
 class StudentExamDetailsScreen extends ConsumerWidget {
   const StudentExamDetailsScreen({
+    super.key,
     required this.exam,
     required this.studentId,
   });
@@ -183,7 +183,7 @@ class StudentExamDetailsScreen extends ConsumerWidget {
             }
 
             final timetable = snap.data;
-            if (timetable == null || timetable.scheduleItems.isEmpty) {
+            if (timetable == null || timetable.schedule.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.all(16),
                 child: Container(
@@ -202,12 +202,11 @@ class StudentExamDetailsScreen extends ConsumerWidget {
               child: ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: timetable.scheduleItems.length,
+                itemCount: timetable.schedule.length,
                 itemBuilder: (context, index) {
-                  final item = timetable.scheduleItems[index];
-                  final dateStr = item.examDate != null
-                      ? "${item.examDate!.day}/${item.examDate!.month}/${item.examDate!.year}"
-                      : 'N/A';
+                  final item = timetable.schedule[index];
+                    final d = item.date;
+                    final dateStr = "${d.day}/${d.month}/${d.year}";
 
                   return Card(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -385,7 +384,7 @@ class StudentExamDetailsScreen extends ConsumerWidget {
                               ],
                             ),
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   ),
@@ -480,7 +479,7 @@ class StudentExamDetailsScreen extends ConsumerWidget {
                     ),
                   ),
                 ],
-              );
+              ),
             );
           },
         );

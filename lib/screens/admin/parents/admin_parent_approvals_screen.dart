@@ -9,7 +9,7 @@ import '../../../services/auth_service.dart';
 import '../../../utils/time_format.dart';
 
 class AdminParentApprovalsScreen extends ConsumerStatefulWidget {
-  const AdminParentApprovalsScreen({Key? key}) : super(key: key);
+  const AdminParentApprovalsScreen({super.key});
 
   @override
   ConsumerState<AdminParentApprovalsScreen> createState() => _AdminParentApprovalsScreenState();
@@ -79,7 +79,7 @@ class _AdminParentApprovalsScreenState extends ConsumerState<AdminParentApproval
         return ListView.separated(
           padding: const EdgeInsets.all(12),
           itemCount: requestDocs.length,
-          separatorBuilder: (_, __) => const Divider(height: 8),
+          separatorBuilder: (context, index) => const Divider(height: 8),
           itemBuilder: (context, index) {
             final doc = requestDocs[index];
             final request = ParentLoginRequest.fromDoc(doc);
@@ -294,12 +294,11 @@ class _AdminParentApprovalsScreenState extends ConsumerState<AdminParentApproval
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
-        if (mounted) Navigator.pop(context);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please login again')),
-          );
-        }
+        if (!context.mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login again')),
+        );
         return;
       }
 
@@ -308,25 +307,23 @@ class _AdminParentApprovalsScreenState extends ConsumerState<AdminParentApproval
         approverUid: user.uid,
       );
 
-      if (mounted) {
-        Navigator.pop(context); // Close progress dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${request.parentName} approved successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close progress dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${request.parentName} approved successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close progress dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close progress dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -355,12 +352,11 @@ class _AdminParentApprovalsScreenState extends ConsumerState<AdminParentApproval
       final user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
-        if (mounted) Navigator.pop(context);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Please login again')),
-          );
-        }
+        if (!context.mounted) return;
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please login again')),
+        );
         return;
       }
 
@@ -369,25 +365,23 @@ class _AdminParentApprovalsScreenState extends ConsumerState<AdminParentApproval
         rejectorUid: user.uid,
       );
 
-      if (mounted) {
-        Navigator.pop(context); // Close progress dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${request.parentName} rejected'),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close progress dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${request.parentName} rejected'),
+          backgroundColor: Colors.orange,
+        ),
+      );
     } catch (e) {
-      if (mounted) {
-        Navigator.pop(context); // Close progress dialog
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (!context.mounted) return;
+      Navigator.pop(context); // Close progress dialog
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }

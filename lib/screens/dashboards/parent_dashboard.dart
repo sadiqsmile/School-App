@@ -11,14 +11,12 @@ import '../../widgets/dashboard_ui.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/notification_token_registration_runner.dart';
 import '../../utils/parent_auth_email.dart';
-import '../parent/students/student_list_screen.dart';
 import '../parent/attendance/parent_attendance_screen.dart';
 import '../parent/homework/parent_homework_list_screen.dart';
 import '../parent/chat/parent_chat_teachers_screen.dart';
 import '../parent/timetable/parent_timetable_screen.dart';
 import '../shared/notifications/notification_inbox_screen.dart';
 import '../parent/exams/parent_exams_screen.dart';
-import '../parent/settings/parent_settings_screen.dart';
 
 class ParentDashboard extends ConsumerWidget {
   const ParentDashboard({super.key});

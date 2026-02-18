@@ -186,7 +186,7 @@ class ExamResultCsvImportService {
         }
 
         // Calculate percentage and grade
-        final percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0;
+        final double percentage = totalMax > 0 ? (totalObtained / totalMax) * 100 : 0.0;
         final grade = _calculateGrade(percentage);
 
         // Prepare document data

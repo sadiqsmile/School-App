@@ -608,17 +608,13 @@ class AuthService {
     // Generate temporary password
     final tempPassword = _generateTemporaryPassword();
 
-    try {
-      // Update FirebaseAuth password
-      final user = _auth.app.auth().getUserByUid(authUid);
-      await _auth.app.auth().updateUser(
-        authUid,
-        password: tempPassword,
-      );
-    } catch (_) {
-      // If direct update fails, try via Callable Function or return temp password for admin
-      // For now, just set the flag and let admin set it manually through Firebase Console
-    }
+    // NOTE:
+    // This is a Flutter client app and does not have access to the Firebase Admin SDK.
+    // Password resets must be done via:
+    // - Firebase Console, or
+    // - a privileged backend (e.g., Cloud Function) that uses the Admin SDK.
+    // Here we only mark the account to force a password change and return a temporary
+    // password so admins can set it manually if needed.
 
     // Set mustChangePassword flag
     await parentRef.set({

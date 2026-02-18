@@ -257,7 +257,7 @@ class _TeacherAttendanceSetupScreenState
                           label: 'Quick Pick (assigned pairs)',
                           value: _selectedClassId == null || _selectedSectionId == null
                               ? null
-                              : '${_selectedClassId}_${_selectedSectionId}',
+                              : '$_selectedClassId''_''$_selectedSectionId',
                           items: [
                             for (final p in pairs)
                               '${p.classId}_${p.sectionId}',
@@ -336,7 +336,7 @@ class _TeacherAttendanceSetupScreenState
                       SizedBox(
                         width: double.infinity,
                         height: 56,
-                        child: FilledButton.icon(
+                        child: FilledButton(
                           onPressed: (_selectedClassId == null || _selectedSectionId == null)
                               ? null
                               : () {
@@ -351,18 +351,24 @@ class _TeacherAttendanceSetupScreenState
                                     ),
                                   );
                                 },
-                          icon: const Icon(Icons.checklist),
-                          label: const Text('Open Student List'),
+                          child: const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.checklist),
+                              SizedBox(width: 10),
+                              Text('Open Student List'),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
                     ],
                   ),
-                );
-              },
-            );
-          },
-        ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

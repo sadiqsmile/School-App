@@ -98,6 +98,27 @@ class NotificationInboxView extends ConsumerWidget {
     return false;
   }
 
+  bool _matchesForStudent(AppNotification n, AppUser student) {
+    if (n.scope == NotificationScope.school) return true;
+
+    if (n.scope == NotificationScope.group) {
+      final g = (n.groupId ?? '').trim();
+      final sg = (student.groupId ?? '').trim();
+      return g.isNotEmpty && sg.isNotEmpty && g == sg;
+    }
+
+    if (n.scope == NotificationScope.classSection) {
+      final c = (n.classId ?? '').trim();
+      final s = (n.sectionId ?? '').trim();
+      final sc = (student.classId ?? '').trim();
+      final ss = (student.sectionId ?? '').trim();
+      return c.isNotEmpty && s.isNotEmpty && c == sc && s == ss;
+    }
+
+    // Students should not receive parent-only notifications.
+    return false;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
@@ -150,6 +171,20 @@ class NotificationInboxView extends ConsumerWidget {
                       return _InboxList(items: filtered);
                     },
                   );
+                },
+              );
+            }
+
+            if (viewerRole == UserRole.student) {
+              final appUserAsync = ref.watch(appUserProvider);
+              return appUserAsync.when(
+                loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
+                error: (err, _) => Center(child: Text('Error: $err')),
+                data: (student) {
+                  final filtered = all
+                      .where((n) => _matchesForStudent(n, student))
+                      .toList(growable: false);
+                  return _InboxList(items: filtered);
                 },
               );
             }

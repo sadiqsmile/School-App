@@ -47,7 +47,7 @@ class StudentExamsScreen extends ConsumerWidget {
                 );
               }
 
-              final studentId = user.id;
+              final studentId = user.uid;
               final groupId = user.groupId ?? '';
 
               if (groupId.isEmpty) {

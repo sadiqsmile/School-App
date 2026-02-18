@@ -59,7 +59,7 @@ String buildTeacherAssignmentsCsv({required List<Map<String, Object?>> assignmen
     final teacherUid = (a['teacherUid'] ?? '').toString().trim();
     final classSectionIds = a['classSectionIds'] ?? '';
     final classStr = (classSectionIds is List)
-        ? (classSectionIds as List).join(',')
+      ? classSectionIds.join(',')
         : classSectionIds.toString().trim();
 
     rows.add([

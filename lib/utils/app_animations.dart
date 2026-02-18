@@ -116,7 +116,7 @@ class AppAnimations {
         tween: Tween(begin: -2, end: 2),
         duration: duration,
         curve: Curves.linear,
-        builder: (_, __, ___) => Container(),
+        builder: (context, value, child) => const SizedBox.shrink(),
       ),
       builder: (context, value, child) {
         return ShaderMask(
@@ -153,7 +153,7 @@ class AppAnimations {
         tween: Tween(begin: endScale, end: beginScale),
         duration: duration ~/ 2,
         curve: Curves.easeInOut,
-        builder: (_, __, ___) => Container(),
+        builder: (context, value, child) => const SizedBox.shrink(),
       ),
       builder: (context, value, child) {
         return Transform.scale(scale: value, child: child);
@@ -185,17 +185,12 @@ class AppAnimations {
 /// Modern page transition
 class ModernPageTransition<T> extends MaterialPageRoute<T> {
   ModernPageTransition({
-    required WidgetBuilder builder,
-    RouteSettings? settings,
-    bool maintainState = true,
-    bool fullscreenDialog = false,
+    required super.builder,
+    super.settings,
+    super.maintainState,
+    super.fullscreenDialog,
     Duration transitionDuration = const Duration(milliseconds: 400),
-  }) : super(
-    builder: builder,
-    settings: settings,
-    maintainState: maintainState,
-    fullscreenDialog: fullscreenDialog,
-  );
+  });
 
   @override
   Duration get transitionDuration => const Duration(milliseconds: 400);
@@ -223,11 +218,11 @@ class DebounceButton extends StatefulWidget {
   final Duration debounce;
 
   const DebounceButton({
-    Key? key,
+    super.key,
     required this.onPressed,
     required this.child,
     this.debounce = const Duration(milliseconds: 500),
-  }) : super(key: key);
+  });
 
   @override
   State<DebounceButton> createState() => _DebounceButtonState();

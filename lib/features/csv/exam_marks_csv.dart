@@ -1,4 +1,4 @@
-import 'exam_marks_result.dart';
+import '../../models/exam_marks_result.dart';
 
 /// CSV export row for exam marks
 class ExamMarksCsvRow {
@@ -77,3 +77,4 @@ class ExamMarksCsvRow {
     );
   }
 }
+

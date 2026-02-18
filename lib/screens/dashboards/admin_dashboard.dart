@@ -669,7 +669,7 @@ class _PremiumActionCardState extends State<_PremiumActionCard> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(widget.icon, color: Colors.white, size: 24),

@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../services/auth_service.dart';
 
 class ParentForcePasswordChangeScreen extends StatefulWidget {
   final VoidCallback? onPasswordChanged;
 
+  // ignore: use_super_parameters
   const ParentForcePasswordChangeScreen({
-    Key? key,
+    super.key,
     this.onPasswordChanged,
-  }) : super(key: key);
+  });
 
   @override
   State<ParentForcePasswordChangeScreen> createState() => _ParentForcePasswordChangeScreenState();
 }
 
 class _ParentForcePasswordChangeScreenState extends State<ParentForcePasswordChangeScreen> {
-  final _auth = FirebaseAuth.instance;
   final _authService = AuthService();
   final _formKey = GlobalKey<FormState>();
 

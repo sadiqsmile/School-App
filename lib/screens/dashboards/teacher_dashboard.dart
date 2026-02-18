@@ -8,7 +8,6 @@ import '../../providers/core_providers.dart';
 
 import '../../widgets/dashboard_ui.dart';
 import '../../widgets/loading_view.dart';
-import '../../widgets/feature_placeholder_screen.dart';
 import '../../widgets/notification_token_registration_runner.dart';
 import '../teacher/attendance/teacher_attendance_setup_screen.dart';
 import '../teacher/contact_parents/teacher_contact_parents_screen.dart';
@@ -40,12 +39,6 @@ class TeacherDashboard extends ConsumerWidget {
             : width >= 560
                 ? 2
                 : 1;
-
-        final yearText = yearAsync.when(
-          data: (yearId) => 'Academic Year: $yearId',
-          loading: () => 'Academic Year: …',
-          error: (_, _) => 'Academic Year: (not set)',
-        );
 
         final yearId = yearAsync.asData?.value;
         final teacherUid = authUserAsync.asData?.value?.uid;
@@ -201,7 +194,7 @@ class TeacherDashboard extends ConsumerWidget {
                           title: 'Mark Attendance',
                           subtitle: 'Daily class attendance',
                           icon: Icons.fact_check_outlined,
-                          gradient: [scheme.primary, scheme.primary.withOpacity(0.7)],
+                          gradient: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
                           onTap: () => _open(context, const TeacherAttendanceSetupScreen()),
                         ),
                         _TeacherActionCard(
@@ -403,7 +396,7 @@ class _TeacherActionCardState extends State<_TeacherActionCard> {
             ),
             boxShadow: [
               BoxShadow(
-                color: widget.gradient[0].withOpacity(_isHovered ? 0.4 : 0.2),
+                color: widget.gradient[0].withValues(alpha: _isHovered ? 0.4 : 0.2),
                 blurRadius: 20,
                 offset: const Offset(0, 8),
               ),
@@ -419,7 +412,7 @@ class _TeacherActionCardState extends State<_TeacherActionCard> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.25),
+                    color: Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(widget.icon, color: Colors.white, size: 24),
@@ -438,7 +431,7 @@ class _TeacherActionCardState extends State<_TeacherActionCard> {
                     Text(
                       widget.subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Colors.white.withOpacity(0.85),
+                        color: Colors.white.withValues(alpha: 0.85),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -467,14 +460,14 @@ class _ClassChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.7)],
+          colors: [color, color.withValues(alpha: 0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -513,8 +506,8 @@ class _TodaysSchedulePreview extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: scheme.primary.withOpacity(0.06),
-                border: Border.all(color: scheme.primary.withOpacity(0.2)),
+                color: scheme.primary.withValues(alpha: 0.06),
+                border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
@@ -523,7 +516,7 @@ class _TodaysSchedulePreview extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: scheme.primary.withOpacity(0.15),
+                      color: scheme.primary.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(Icons.schedule, color: scheme.primary, size: 20),
@@ -549,7 +542,7 @@ class _TodaysSchedulePreview extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(Icons.chevron_right, color: Colors.grey.withOpacity(0.5)),
+                  Icon(Icons.chevron_right, color: Colors.grey.withValues(alpha: 0.5)),
                 ],
               ),
             ),

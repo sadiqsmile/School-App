@@ -68,7 +68,7 @@ String buildParentsCsv({required List<Map<String, Object?>> parents}) {
     final displayName = (p['displayName'] ?? '').toString().trim();
     final childrenIds = p['childrenIds'] ?? '';
     final childrenStr = (childrenIds is List)
-        ? (childrenIds as List).join(',')
+      ? childrenIds.join(',')
         : childrenIds.toString().trim();
     final isActive = (p['isActive'] is bool)
         ? (p['isActive'] as bool)
