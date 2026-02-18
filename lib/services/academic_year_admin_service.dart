@@ -77,15 +77,6 @@ class AcademicYearAdminService {
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-
-    // Also ensure a global academicYears/{yearId} doc exists for legacy year-specific helpers
-    // (classSections, year-students). This keeps the existing app structure working.
-    await _firestore.collection('academicYears').doc(y).set({
-      'yearId': y,
-      'label': (label ?? y).trim().isEmpty ? y : (label ?? y).trim(),
-      'createdAt': FieldValue.serverTimestamp(),
-      'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
   }
 
   Future<void> setActiveAcademicYearId({
@@ -103,8 +94,8 @@ class AcademicYearAdminService {
 
   /// Copies year class-sections (used for teacher assignments UI) from one year to another.
   ///
-  /// Path used by existing app code:
-  /// academicYears/{yearId}/schools/{schoolId}/classSections/{classSectionId}
+  /// Canonical path:
+  /// schools/{schoolId}/academicYears/{yearId}/classSections/{classSectionId}
   Future<int> copyYearClassSections({
     required String fromYearId,
     required String toYearId,
@@ -114,19 +105,15 @@ class AcademicYearAdminService {
     final to = toYearId.trim();
     if (from.isEmpty || to.isEmpty) throw Exception('Year IDs are required');
 
-    final fromCol = _firestore
-        .collection('academicYears')
-        .doc(from)
-        .collection('schools')
-        .doc(schoolId)
-        .collection('classSections');
+    final fromCol = _schoolDoc(schoolId: schoolId)
+      .collection('academicYears')
+      .doc(from)
+      .collection('classSections');
 
-    final toCol = _firestore
-        .collection('academicYears')
-        .doc(to)
-        .collection('schools')
-        .doc(schoolId)
-        .collection('classSections');
+    final toCol = _schoolDoc(schoolId: schoolId)
+      .collection('academicYears')
+      .doc(to)
+      .collection('classSections');
 
     final snap = await fromCol.get();
     if (snap.docs.isEmpty) return 0;
@@ -216,11 +203,11 @@ class AcademicYearAdminService {
   }
 
   /// Rollover wizard action:
-  /// - Ensures the `toYearId` exists (school + global)
-  /// - Optionally copies classSections (global academicYears structure)
+  /// - Ensures the `toYearId` exists
+  /// - Optionally copies classSections (canonical year structure)
   /// - Promotes base students (class N -> N+1)
   /// - Marks final class as alumni/inactive
-  /// - Creates/updates global year-student docs used by the existing app UI
+  /// - Creates/updates year-student docs used by the app UI
   Future<void> rolloverAndPromoteStudents({
     String schoolId = AppConfig.schoolId,
     required String fromYearId,
@@ -298,11 +285,9 @@ class AcademicYearAdminService {
           );
 
           // Still create year-student doc (optional, but keeps history discoverable).
-          final yearStudentRef = _firestore
+            final yearStudentRef = _schoolDoc(schoolId: schoolId)
               .collection('academicYears')
               .doc(to)
-              .collection('schools')
-              .doc(schoolId)
               .collection('students')
               .doc(studentId);
 
@@ -329,11 +314,9 @@ class AcademicYearAdminService {
             SetOptions(merge: true),
           );
 
-          final yearStudentRef = _firestore
+            final yearStudentRef = _schoolDoc(schoolId: schoolId)
               .collection('academicYears')
               .doc(to)
-              .collection('schools')
-              .doc(schoolId)
               .collection('students')
               .doc(studentId);
 

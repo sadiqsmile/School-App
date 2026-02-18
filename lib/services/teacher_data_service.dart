@@ -34,10 +34,10 @@ class TeacherDataService {
     required String schoolId,
   }) {
     return _firestore
-        .collection('academicYears')
-        .doc(yearId)
         .collection('schools')
         .doc(schoolId)
+        .collection('academicYears')
+        .doc(yearId)
         .collection('students');
   }
 
@@ -91,13 +91,13 @@ class TeacherDataService {
   }) async {
     final docId = _dateDocId(date);
     final doc = await _firestore
-        .collection('academicYears')
-        .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
-        .collection('students')
-        .doc(studentId)
-        .collection('attendance')
+      .collection('schools')
+      .doc(schoolId)
+      .collection('academicYears')
+      .doc(yearId)
+      .collection('students')
+      .doc(studentId)
+      .collection('attendance')
         .doc(docId)
         .get();
 
@@ -118,13 +118,13 @@ class TeacherDataService {
     final docId = _dateDocId(normalized);
 
     final doc = _firestore
-        .collection('academicYears')
-        .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
-        .collection('students')
-        .doc(studentId)
-        .collection('attendance')
+      .collection('schools')
+      .doc(schoolId)
+      .collection('academicYears')
+      .doc(yearId)
+      .collection('students')
+      .doc(studentId)
+      .collection('attendance')
         .doc(docId);
 
     await doc.set({
@@ -151,10 +151,10 @@ class TeacherDataService {
       final status = entry.value;
 
       final doc = _firestore
-          .collection('academicYears')
-          .doc(yearId)
           .collection('schools')
           .doc(schoolId)
+          .collection('academicYears')
+          .doc(yearId)
           .collection('students')
           .doc(studentId)
           .collection('attendance')

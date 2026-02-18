@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../providers/auth_providers.dart';
 import '../../../providers/core_providers.dart';
+import '../../../models/user_role.dart';
 import '../../../utils/attachment_download/attachment_download.dart';
 import '../../../widgets/loading_view.dart';
 
@@ -40,6 +42,9 @@ class HomeworkDetailsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final authUser = ref.watch(firebaseAuthUserProvider).asData?.value;
+    final appUser = ref.watch(appUserProvider).asData?.value;
+
     final docStream = ref
         .read(homeworkServiceProvider)
         .homeworkCollection(yearId: yearId)
@@ -77,6 +82,11 @@ class HomeworkDetailsScreen extends ConsumerWidget {
           final publishDate = ts is Timestamp ? ts.toDate() : null;
 
           final rawAttachments = (data['attachments'] as List?) ?? const [];
+
+          final myUid = authUser?.uid;
+          final isAdmin = appUser?.role == UserRole.admin;
+          final isTeacher = appUser?.role == UserRole.teacher;
+          final canManage = showTeacherActions && (isAdmin || (isTeacher && myUid != null && myUid == createdByUid));
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -148,6 +158,38 @@ class HomeworkDetailsScreen extends ConsumerWidget {
                             onOpen: (url) => _openUrl(context, url),
                             onDownload: (url, {fileName}) => downloadUrl(url, fileName: fileName),
                             onCopy: (url) => Clipboard.setData(ClipboardData(text: url)),
+                            onDelete: !canManage
+                                ? null
+                                : ({required String storagePath}) async {
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: const Text('Delete attachment?'),
+                                          content: const Text('This will remove the file from Storage and this homework item.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                    if (ok != true) return;
+                                    await ref.read(homeworkServiceProvider).deleteHomeworkAttachment(
+                                          yearId: yearId,
+                                          homeworkId: homeworkId,
+                                          storagePath: storagePath,
+                                        );
+                                    if (context.mounted) {
+                                      _snack(context, 'Attachment deleted');
+                                    }
+                                  },
                           ),
                     ],
                   ),
@@ -209,6 +251,45 @@ class HomeworkDetailsScreen extends ConsumerWidget {
                             label: const Text('Disable (isActive=false)'),
                           ),
                         ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 48,
+                          child: FilledButton.tonalIcon(
+                            onPressed: canManage
+                                ? () async {
+                                    final ok = await showDialog<bool>(
+                                      context: context,
+                                      builder: (context) {
+                                        return AlertDialog(
+                                          title: const Text('Delete this item?'),
+                                          content: const Text('This will delete the homework/notes document and all its attachments.'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context, false),
+                                              child: const Text('Cancel'),
+                                            ),
+                                            FilledButton(
+                                              onPressed: () => Navigator.pop(context, true),
+                                              child: const Text('Delete'),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                    if (ok != true) return;
+                                    await ref.read(homeworkServiceProvider).deleteHomework(
+                                          yearId: yearId,
+                                          homeworkId: homeworkId,
+                                        );
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop();
+                                    }
+                                  }
+                                : null,
+                            icon: const Icon(Icons.delete_outline),
+                            label: Text(canManage ? 'Delete (creator only)' : 'Delete (not allowed)'),
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Text(
                           'Storage files are not deleted automatically (free-plan friendly).',
@@ -241,12 +322,14 @@ class _AttachmentTile extends StatelessWidget {
     required this.onOpen,
     required this.onDownload,
     required this.onCopy,
+    required this.onDelete,
   });
 
   final Object attachment;
   final ValueChanged<String> onOpen;
   final Future<bool> Function(String url, {String? fileName}) onDownload;
   final ValueChanged<String> onCopy;
+  final Future<void> Function({required String storagePath})? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -255,10 +338,11 @@ class _AttachmentTile extends StatelessWidget {
     }
 
     final map = attachment as Map;
-    final name = (map['fileName'] ?? '').toString();
-    final url = (map['fileUrl'] ?? '').toString();
-    final type = (map['fileType'] ?? '').toString();
-    final size = map['size'];
+    final name = ((map['name'] ?? map['fileName']) ?? '').toString();
+    final url = ((map['url'] ?? map['fileUrl']) ?? '').toString();
+    final type = ((map['fileType'] ?? map['type']) ?? '').toString();
+    final size = map['sizeBytes'] ?? map['size'];
+    final storagePath = (map['storagePath'] ?? '').toString();
 
     final icon = switch (type) {
       'pdf' => Icons.picture_as_pdf_outlined,
@@ -303,6 +387,14 @@ class _AttachmentTile extends StatelessWidget {
                   },
             icon: const Icon(Icons.link_outlined),
           ),
+          if (onDelete != null)
+            IconButton(
+              tooltip: 'Delete',
+              onPressed: storagePath.trim().isEmpty
+                  ? null
+                  : () => onDelete!.call(storagePath: storagePath),
+              icon: const Icon(Icons.delete_outline),
+            ),
         ],
       ),
     );

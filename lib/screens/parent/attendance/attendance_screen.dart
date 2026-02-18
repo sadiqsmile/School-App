@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 import '../../../models/attendance_entry.dart';
+import '../../../models/attendance_pa_entry.dart';
 import '../../../providers/core_providers.dart';
 import '../../../widgets/loading_view.dart';
 
@@ -30,11 +31,25 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
   @override
   Widget build(BuildContext context) {
     final monthKey = DateTime(_focusedDay.year, _focusedDay.month, 1);
-    final attendanceStream = ref.read(parentDataServiceProvider).watchAttendanceForMonth(
+    final attendanceStream = ref
+        .read(attendanceServiceProvider)
+        .watchStudentAttendanceV3ForMonth(
           yearId: widget.yearId,
           studentId: widget.studentId,
           month: monthKey,
-        );
+        )
+        .map((items) {
+          return items
+              .map((AttendancePAEntry e) {
+                final status = switch (e.status) {
+                  'P' => 'present',
+                  'A' => 'absent',
+                  _ => 'unmarked',
+                };
+                return AttendanceEntry(date: e.date, status: status);
+              })
+              .toList(growable: false);
+        });
 
     return Scaffold(
       appBar: AppBar(title: Text('Attendance • ${widget.studentName}')),
@@ -42,7 +57,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
         stream: attendanceStream,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: LoadingView(message: 'Loading attendance…'));
+            return const Center(
+              child: LoadingView(message: 'Loading attendance…'),
+            );
           }
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -50,7 +67,8 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 
           final entries = snapshot.data ?? const [];
           final byDay = <DateTime, AttendanceEntry>{
-            for (final e in entries) DateTime(e.date.year, e.date.month, e.date.day): e,
+            for (final e in entries)
+              DateTime(e.date.year, e.date.month, e.date.day): e,
           };
 
           final presentCount = entries.where((e) => e.isPresent).length;
@@ -69,10 +87,9 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     children: [
                       Text(
                         DateFormat('MMMM yyyy').format(monthKey),
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleLarge
-                            ?.copyWith(fontWeight: FontWeight.w700),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text('Present: $presentCount'),
@@ -115,15 +132,17 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                         final color = entry.isPresent
                             ? Colors.green
                             : entry.isAbsent
-                                ? Colors.red
-                                : Colors.orange;
+                            ? Colors.red
+                            : Colors.orange;
 
                         return Container(
                           margin: const EdgeInsets.all(6),
                           decoration: BoxDecoration(
                             color: color.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: color.withValues(alpha: 0.6)),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.6),
+                            ),
                           ),
                           alignment: Alignment.center,
                           child: Text('${day.day}'),
@@ -140,11 +159,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     padding: const EdgeInsets.all(16),
                     child: _SelectedDayInfo(
                       selectedDay: _selectedDay!,
-                      entry: byDay[DateTime(
-                        _selectedDay!.year,
-                        _selectedDay!.month,
-                        _selectedDay!.day,
-                      )],
+                      entry:
+                          byDay[DateTime(
+                            _selectedDay!.year,
+                            _selectedDay!.month,
+                            _selectedDay!.day,
+                          )],
                     ),
                   ),
                 ),
@@ -157,10 +177,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 }
 
 class _SelectedDayInfo extends StatelessWidget {
-  const _SelectedDayInfo({
-    required this.selectedDay,
-    required this.entry,
-  });
+  const _SelectedDayInfo({required this.selectedDay, required this.entry});
 
   final DateTime selectedDay;
   final AttendanceEntry? entry;

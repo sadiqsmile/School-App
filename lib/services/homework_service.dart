@@ -241,6 +241,24 @@ class HomeworkService {
 
     onProgress?.call(const HomeworkUploadProgress(stage: HomeworkUploadStage.preparing));
 
+    // Create the Firestore document FIRST so Storage rules can validate uploads
+    // via firestore.get() on this homework doc.
+    await docRef.set({
+      'title': cleanedTitle,
+      'description': cleanedDesc,
+      'class': cleanedClass,
+      'section': cleanedSection,
+      'subject': cleanedSubject,
+      'type': cleanedType,
+      'publishDate': Timestamp.fromDate(publishDate),
+      'createdByUid': createdByUid,
+      'createdByName': createdByName,
+      'attachments': <Object?>[],
+      'isActive': isActive,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+
     final attachments = <Map<String, Object?>>[];
 
     for (var i = 0; i < files.length; i++) {
@@ -275,11 +293,30 @@ class HomeworkService {
       await uploadTask;
       final url = await ref.getDownloadURL();
 
+      // NOTE: Firestore serverTimestamp() cannot be reliably used inside array
+      // elements, so we store client time for per-attachment uploadedAt.
+      final uploadedAt = Timestamp.fromDate(DateTime.now());
+
+      // Canonical keys (new): name/url/storagePath/sizeBytes/uploadedAt
+      // Legacy keys (kept): fileName/fileUrl/fileType/size
+      final fileType = detectFileType(fileName);
+      final contentType = detectContentType(fileName);
+        final contentTypeMap = contentType == null
+          ? const <String, Object?>{}
+          : <String, Object?>{'contentType': contentType};
+
       attachments.add({
+        'name': fileName,
+        'url': url,
+        'storagePath': ref.fullPath,
+        'sizeBytes': f.size,
+        'uploadedAt': uploadedAt,
+        ...contentTypeMap,
+        'fileType': fileType,
+
+        // Legacy
         'fileName': fileName,
         'fileUrl': url,
-        'fileType': detectFileType(fileName),
-        'storagePath': ref.fullPath,
         'size': f.size,
       });
     }
@@ -287,22 +324,75 @@ class HomeworkService {
     onProgress?.call(const HomeworkUploadProgress(stage: HomeworkUploadStage.saving));
 
     await docRef.set({
-      'title': cleanedTitle,
-      'description': cleanedDesc,
-      'class': cleanedClass,
-      'section': cleanedSection,
-      'subject': cleanedSubject,
-      'type': cleanedType,
-      'publishDate': Timestamp.fromDate(publishDate),
-      'createdByUid': createdByUid,
-      'createdByName': createdByName,
       'attachments': attachments,
-      'isActive': isActive,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     onProgress?.call(const HomeworkUploadProgress(stage: HomeworkUploadStage.done));
     return homeworkId;
+  }
+
+  /// Deletes a single attachment from both Storage and Firestore.
+  ///
+  /// This is intended for the homework creator (or admin).
+  Future<void> deleteHomeworkAttachment({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String homeworkId,
+    required String storagePath,
+  }) async {
+    final docRef = homeworkCollection(schoolId: schoolId, yearId: yearId).doc(homeworkId);
+    final snap = await docRef.get();
+    final data = snap.data();
+    if (data == null) throw Exception('Homework not found');
+
+    final raw = (data['attachments'] as List?) ?? const [];
+    final filtered = raw.where((a) {
+      if (a is! Map) return true;
+      final sp = (a['storagePath'] ?? '').toString();
+      return sp != storagePath;
+    }).toList(growable: false);
+
+    // Best-effort delete file; if already missing, continue.
+    try {
+      await _storage.ref().child(storagePath).delete();
+    } catch (_) {}
+
+    await docRef.set({
+      'attachments': filtered,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Deletes the homework document and all referenced attachments.
+  ///
+  /// This is intended for the homework creator (or admin).
+  Future<void> deleteHomework({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String homeworkId,
+  }) async {
+    final docRef = homeworkCollection(schoolId: schoolId, yearId: yearId).doc(homeworkId);
+    final snap = await docRef.get();
+    final data = snap.data();
+    if (data == null) throw Exception('Homework not found');
+
+    final raw = (data['attachments'] as List?) ?? const [];
+    final paths = <String>[];
+    for (final a in raw) {
+      if (a is! Map) continue;
+      final sp = (a['storagePath'] ?? '').toString().trim();
+      if (sp.isNotEmpty) paths.add(sp);
+    }
+
+    // Delete files first (best-effort).
+    for (final p in paths) {
+      try {
+        await _storage.ref().child(p).delete();
+      } catch (_) {}
+    }
+
+    await docRef.delete();
   }
 }
 

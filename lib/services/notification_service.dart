@@ -102,14 +102,28 @@ class NotificationService {
     return _firestore.collection('schools').doc(schoolId);
   }
 
+  DocumentReference<Map<String, dynamic>> _yearDoc({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+  }) {
+    return _schoolDoc(schoolId: schoolId).collection('academicYears').doc(yearId);
+  }
+
+  CollectionReference<Map<String, dynamic>> _notificationsCol({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+  }) {
+    return _yearDoc(schoolId: schoolId, yearId: yearId).collection('notifications');
+  }
+
   /// A simple, reliable inbox feed (no OR queries): we stream latest N notifications
   /// and filter client-side based on role/group/class/parent.
   Stream<List<AppNotification>> watchLatest({
     String schoolId = AppConfig.schoolId,
+    required String yearId,
     int limit = 200,
   }) {
-    return _schoolDoc(schoolId: schoolId)
-        .collection('notifications')
+    return _notificationsCol(schoolId: schoolId, yearId: yearId)
         .orderBy('createdAt', descending: true)
         .limit(limit)
         .snapshots()
@@ -120,6 +134,7 @@ class NotificationService {
 
   Future<String> createNotification({
     String schoolId = AppConfig.schoolId,
+    required String yearId,
     required String title,
     required String body,
     required NotificationScope scope,
@@ -166,7 +181,7 @@ class NotificationService {
       throw Exception('Enter parent mobile');
     }
 
-    final ref = _schoolDoc(schoolId: schoolId).collection('notifications').doc();
+    final ref = _notificationsCol(schoolId: schoolId, yearId: yearId).doc();
     await ref.set(payload);
     return ref.id;
   }

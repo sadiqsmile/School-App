@@ -16,6 +16,7 @@ class TeacherHomeworkListScreen extends ConsumerStatefulWidget {
 }
 
 class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListScreen> {
+  String? _classSectionId;
   String? _classId;
   String? _sectionId;
   String? _subject;
@@ -94,8 +95,9 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
     }
 
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
-    final classesStream = ref.read(adminDataServiceProvider).watchClasses();
-    final sectionsStream = ref.read(adminDataServiceProvider).watchSections();
+    final assignedStream = ref
+      .read(teacherDataServiceProvider)
+      .watchAssignedClassSectionIds(teacherUid: authUser.uid);
 
     return Scaffold(
       appBar: AppBar(
@@ -118,174 +120,158 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
         error: (e, _) => Center(child: Text('Error: $e')),
         data: (yearId) {
           final cutoff = DateTime.now().subtract(const Duration(days: 30));
-          final stream = ref.read(homeworkServiceProvider).watchHomework(
-                yearId: yearId,
-                classId: _classId,
-                sectionId: _sectionId,
-                subject: _subject,
-                type: _type,
-                onlyActive: false, // teacher sees all
-                minPublishDate: _hideOlderThan30Days ? cutoff : null,
-              );
+          return StreamBuilder<List<String>>(
+            stream: assignedStream,
+            builder: (context, assignedSnap) {
+              if (assignedSnap.connectionState == ConnectionState.waiting) {
+                return const Center(child: LoadingView(message: 'Loading assignments…'));
+              }
 
-          return Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Card(
+              final assignedIds = (assignedSnap.data ?? const <String>[]).where((s) => s.contains('_')).toList();
+              if (assignedIds.isEmpty) {
+                return const Center(
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          'Filters',
-                          style: Theme.of(context)
-                              .textTheme
-                              .titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 12),
-                        SwitchListTile(
-                          value: _hideOlderThan30Days,
-                          onChanged: (v) => setState(() => _hideOlderThan30Days = v),
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Auto-hide older than 30 days'),
-                          subtitle: Text(
-                            _hideOlderThan30Days
-                                ? 'Showing only last 30 days (FREE plan friendly)'
-                                : 'Showing all dates (may be slower)',
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: StreamBuilder(
-                                stream: classesStream,
-                                builder: (context, snap) {
-                                  if (snap.connectionState == ConnectionState.waiting) {
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 6),
-                                      child: LinearProgressIndicator(),
-                                    );
-                                  }
-                                  final docs = snap.data?.docs ?? const [];
-                                  final ids = docs.map((d) => d.id).toSet();
-                                  final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
-
-                                  final items = <DropdownMenuItem<String?>>[
-                                    const DropdownMenuItem(value: null, child: Text('All classes')),
-                                    for (final d in docs)
-                                      DropdownMenuItem(
-                                        value: d.id,
-                                        child: Text((d.data()['name'] as String?) ?? d.id),
-                                      ),
-                                  ];
-
-                                  return DropdownButtonFormField<String?>(
-                                    key: ValueKey(selected),
-                                    initialValue: selected,
-                                    items: items,
-                                    onChanged: (v) => setState(() => _classId = v),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Class',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.class_outlined),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: StreamBuilder(
-                                stream: sectionsStream,
-                                builder: (context, snap) {
-                                  if (snap.connectionState == ConnectionState.waiting) {
-                                    return const Padding(
-                                      padding: EdgeInsets.symmetric(vertical: 6),
-                                      child: LinearProgressIndicator(),
-                                    );
-                                  }
-                                  final docs = snap.data?.docs ?? const [];
-                                  final ids = docs.map((d) => d.id).toSet();
-                                  final selected =
-                                      (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
-
-                                  final items = <DropdownMenuItem<String?>>[
-                                    const DropdownMenuItem(value: null, child: Text('All sections')),
-                                    for (final d in docs)
-                                      DropdownMenuItem(
-                                        value: d.id,
-                                        child: Text((d.data()['name'] as String?) ?? d.id),
-                                      ),
-                                  ];
-
-                                  return DropdownButtonFormField<String?>(
-                                    key: ValueKey(selected),
-                                    initialValue: selected,
-                                    items: items,
-                                    onChanged: (v) => setState(() => _sectionId = v),
-                                    decoration: const InputDecoration(
-                                      labelText: 'Section',
-                                      border: OutlineInputBorder(),
-                                      prefixIcon: Icon(Icons.group_outlined),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonFormField<String?>(
-                                key: ValueKey(_subject),
-                                initialValue: _subject,
-                                items: [
-                                  const DropdownMenuItem(value: null, child: Text('All subjects')),
-                                  for (final s in _subjects()) DropdownMenuItem(value: s, child: Text(s)),
-                                ],
-                                onChanged: (v) => setState(() => _subject = v),
-                                decoration: const InputDecoration(
-                                  labelText: 'Subject',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.menu_book_outlined),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: DropdownButtonFormField<String?>(
-                                key: ValueKey(_type),
-                                initialValue: _type,
-                                items: const [
-                                  DropdownMenuItem(value: null, child: Text('All types')),
-                                  DropdownMenuItem(value: 'homework', child: Text('Homework')),
-                                  DropdownMenuItem(value: 'notes', child: Text('Notes')),
-                                ],
-                                onChanged: (v) => setState(() => _type = v),
-                                decoration: const InputDecoration(
-                                  labelText: 'Type',
-                                  border: OutlineInputBorder(),
-                                  prefixIcon: Icon(Icons.filter_list_outlined),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'No class/section assigned yet.\n\nAsk admin to set teacherAssignments.',
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: stream,
-                  builder: (context, snap) {
+                );
+              }
+
+              final selected = (_classSectionId != null && assignedIds.contains(_classSectionId))
+                  ? _classSectionId!
+                  : assignedIds.first;
+
+              if (_classSectionId == null || _classSectionId != selected) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  final parts = selected.split('_');
+                  setState(() {
+                    _classSectionId = selected;
+                    _classId = parts.first;
+                    _sectionId = parts.sublist(1).join('_');
+                  });
+                });
+              }
+
+              final classId = _classId;
+              final sectionId = _sectionId;
+              if (classId == null || sectionId == null) {
+                return const Center(child: LoadingView(message: 'Preparing…'));
+              }
+
+              final stream = ref.read(homeworkServiceProvider).watchHomework(
+                    yearId: yearId,
+                    classId: classId,
+                    sectionId: sectionId,
+                    subject: _subject,
+                    type: _type,
+                    onlyActive: false, // teacher sees active + disabled
+                    minPublishDate: _hideOlderThan30Days ? cutoff : null,
+                  );
+
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(
+                              'Filters',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 12),
+                            DropdownButtonFormField<String>(
+                              key: ValueKey(selected),
+                              initialValue: selected,
+                              items: [
+                                for (final id in assignedIds)
+                                  DropdownMenuItem(value: id, child: Text(id)),
+                              ],
+                              onChanged: (v) {
+                                if (v == null) return;
+                                final parts = v.split('_');
+                                setState(() {
+                                  _classSectionId = v;
+                                  _classId = parts.first;
+                                  _sectionId = parts.sublist(1).join('_');
+                                });
+                              },
+                              decoration: const InputDecoration(
+                                labelText: 'Class/Section (assigned)',
+                                border: OutlineInputBorder(),
+                                prefixIcon: Icon(Icons.class_outlined),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            SwitchListTile(
+                              value: _hideOlderThan30Days,
+                              onChanged: (v) => setState(() => _hideOlderThan30Days = v),
+                              contentPadding: EdgeInsets.zero,
+                              title: const Text('Auto-hide older than 30 days'),
+                              subtitle: Text(
+                                _hideOlderThan30Days
+                                    ? 'Showing only last 30 days (FREE plan friendly)'
+                                    : 'Showing all dates (may be slower)',
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<String?>(
+                                    key: ValueKey(_subject),
+                                    initialValue: _subject,
+                                    items: [
+                                      const DropdownMenuItem(value: null, child: Text('All subjects')),
+                                      for (final s in _subjects()) DropdownMenuItem(value: s, child: Text(s)),
+                                    ],
+                                    onChanged: (v) => setState(() => _subject = v),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Subject',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.menu_book_outlined),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: DropdownButtonFormField<String?>(
+                                    key: ValueKey(_type),
+                                    initialValue: _type,
+                                    items: const [
+                                      DropdownMenuItem(value: null, child: Text('All types')),
+                                      DropdownMenuItem(value: 'homework', child: Text('Homework')),
+                                      DropdownMenuItem(value: 'notes', child: Text('Notes')),
+                                    ],
+                                    onChanged: (v) => setState(() => _type = v),
+                                    decoration: const InputDecoration(
+                                      labelText: 'Type',
+                                      border: OutlineInputBorder(),
+                                      prefixIcon: Icon(Icons.filter_list_outlined),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: stream,
+                      builder: (context, snap) {
                     if (snap.connectionState == ConnectionState.waiting) {
                       return const Center(child: LoadingView(message: 'Loading…'));
                     }
@@ -343,10 +329,12 @@ class _TeacherHomeworkListScreenState extends ConsumerState<TeacherHomeworkListS
                         );
                       },
                     );
-                  },
-                ),
-              ),
-            ],
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
           );
         },
       ),

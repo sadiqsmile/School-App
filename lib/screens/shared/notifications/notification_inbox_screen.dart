@@ -85,81 +85,89 @@ class NotificationInboxView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifStream = ref.read(notificationServiceProvider).watchLatest();
+    final yearAsync = ref.watch(activeAcademicYearIdProvider);
 
-    return StreamBuilder<List<AppNotification>>(
-      stream: notifStream,
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Center(child: LoadingView(message: 'Loading notifications…'));
-        }
-        if (snap.hasError) {
-          return Center(child: Text('Error: ${snap.error}'));
-        }
+    return yearAsync.when(
+      loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (yearId) {
+        final notifStream = ref.read(notificationServiceProvider).watchLatest(yearId: yearId);
 
-        final all = snap.data ?? const <AppNotification>[];
+        return StreamBuilder<List<AppNotification>>(
+          stream: notifStream,
+          builder: (context, snap) {
+            if (snap.connectionState == ConnectionState.waiting) {
+              return const Center(child: LoadingView(message: 'Loading notifications…'));
+            }
+            if (snap.hasError) {
+              return Center(child: Text('Error: ${snap.error}'));
+            }
 
-        if (viewerRole == UserRole.admin) {
-          return _InboxList(items: all);
-        }
+            final all = snap.data ?? const <AppNotification>[];
 
-        if (viewerRole == UserRole.teacher) {
-          final authUser = ref.watch(firebaseAuthUserProvider).asData?.value;
-          if (authUser == null) {
-            return const Center(child: Text('Please login again.'));
-          }
+            if (viewerRole == UserRole.admin) {
+              return _InboxList(items: all);
+            }
 
-          final appUserAsync = ref.watch(appUserProvider);
-          final assignedStream = ref
-              .read(teacherDataServiceProvider)
-              .watchAssignedClassSectionIds(teacherUid: authUser.uid);
+            if (viewerRole == UserRole.teacher) {
+              final authUser = ref.watch(firebaseAuthUserProvider).asData?.value;
+              if (authUser == null) {
+                return const Center(child: Text('Please login again.'));
+              }
 
-          return appUserAsync.when(
-            loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
-            error: (err, _) => Center(child: Text('Error: $err')),
-            data: (teacher) {
-              return StreamBuilder<List<String>>(
-                stream: assignedStream,
-                builder: (context, assSnap) {
-                  final assigned = assSnap.data ?? const <String>[];
-                  final filtered = all
-                      .where((n) => _matchesForTeacher(n, teacher, assigned))
-                      .toList(growable: false);
+              final appUserAsync = ref.watch(appUserProvider);
+              final assignedStream = ref
+                  .read(teacherDataServiceProvider)
+                  .watchAssignedClassSectionIds(teacherUid: authUser.uid);
 
-                  return _InboxList(items: filtered);
+              return appUserAsync.when(
+                loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
+                error: (err, _) => Center(child: Text('Error: $err')),
+                data: (teacher) {
+                  return StreamBuilder<List<String>>(
+                    stream: assignedStream,
+                    builder: (context, assSnap) {
+                      final assigned = assSnap.data ?? const <String>[];
+                      final filtered = all
+                          .where((n) => _matchesForTeacher(n, teacher, assigned))
+                          .toList(growable: false);
+
+                      return _InboxList(items: filtered);
+                    },
+                  );
                 },
               );
-            },
-          );
-        }
-
-        // Parent
-        final mobile = (parentMobile ?? '').trim();
-        if (mobile.isEmpty) {
-          return const Center(child: Text('Please login again.'));
-        }
-
-        // We already have a proper parent->children stream in ParentDataService.
-        final linkedStream = ref
-            .read(parentDataServiceProvider)
-            .watchLinkedChildrenBaseStudents(parentMobile: mobile);
-
-        return StreamBuilder<List<StudentBase>>(
-          stream: linkedStream,
-          builder: (context, childSnap) {
-            if (childSnap.connectionState == ConnectionState.waiting) {
-              return const Center(child: LoadingView(message: 'Loading students…'));
-            }
-            if (childSnap.hasError) {
-              return Center(child: Text('Error: ${childSnap.error}'));
             }
 
-            final children = childSnap.data ?? const <StudentBase>[];
-            final filtered = all
-                .where((n) => _matchesForParent(n, children, mobile))
-                .toList(growable: false);
+            // Parent
+            final mobile = (parentMobile ?? '').trim();
+            if (mobile.isEmpty) {
+              return const Center(child: Text('Please login again.'));
+            }
 
-            return _InboxList(items: filtered);
+            // We already have a proper parent->children stream in ParentDataService.
+            final linkedStream = ref
+                .read(parentDataServiceProvider)
+                .watchLinkedChildrenBaseStudents(parentMobile: mobile);
+
+            return StreamBuilder<List<StudentBase>>(
+              stream: linkedStream,
+              builder: (context, childSnap) {
+                if (childSnap.connectionState == ConnectionState.waiting) {
+                  return const Center(child: LoadingView(message: 'Loading students…'));
+                }
+                if (childSnap.hasError) {
+                  return Center(child: Text('Error: ${childSnap.error}'));
+                }
+
+                final children = childSnap.data ?? const <StudentBase>[];
+                final filtered = all
+                    .where((n) => _matchesForParent(n, children, mobile))
+                    .toList(growable: false);
+
+                return _InboxList(items: filtered);
+              },
+            );
           },
         );
       },

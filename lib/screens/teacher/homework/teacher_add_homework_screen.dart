@@ -22,6 +22,7 @@ class _TeacherAddHomeworkScreenState extends ConsumerState<TeacherAddHomeworkScr
   final _titleCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
 
+  String? _classSectionId;
   String? _classId;
   String? _sectionId;
   String? _subject;
@@ -108,7 +109,7 @@ class _TeacherAddHomeworkScreenState extends ConsumerState<TeacherAddHomeworkScr
     final subject = _subject;
 
     if (classId == null || sectionId == null) {
-      _snack('Please select class and section');
+      _snack('Please select class/section');
       return;
     }
     if (subject == null || subject.trim().isEmpty) {
@@ -166,8 +167,14 @@ class _TeacherAddHomeworkScreenState extends ConsumerState<TeacherAddHomeworkScr
 
   @override
   Widget build(BuildContext context) {
-    final classesStream = ref.read(adminDataServiceProvider).watchClasses();
-    final sectionsStream = ref.read(adminDataServiceProvider).watchSections();
+    final uid = ref.watch(firebaseAuthUserProvider).asData?.value?.uid;
+    if (uid == null) {
+      return const Scaffold(body: Center(child: Text('Please login again.')));
+    }
+
+    final assignedStream = ref.read(teacherDataServiceProvider).watchAssignedClassSectionIds(
+          teacherUid: uid,
+        );
 
     final subjects = _defaultSubjects();
 
@@ -244,87 +251,66 @@ class _TeacherAddHomeworkScreenState extends ConsumerState<TeacherAddHomeworkScr
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: StreamBuilder(
-                                  stream: classesStream,
-                                  builder: (context, snap) {
-                                    if (snap.connectionState == ConnectionState.waiting) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 6),
-                                        child: LinearProgressIndicator(),
-                                      );
-                                    }
+                          StreamBuilder<List<String>>(
+                            stream: assignedStream,
+                            builder: (context, snap) {
+                              if (snap.connectionState == ConnectionState.waiting) {
+                                return const Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 6),
+                                  child: LinearProgressIndicator(),
+                                );
+                              }
 
-                                    final docs = snap.data?.docs ?? const [];
-                                    final ids = docs.map((d) => d.id).toSet();
-                                    final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
+                              final ids = (snap.data ?? const <String>[]).where((s) => s.contains('_')).toList();
+                              if (ids.isEmpty) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(8),
+                                  child: Text(
+                                    'No class/section assigned yet.\n\nAsk admin to set teacherAssignments.',
+                                    textAlign: TextAlign.center,
+                                  ),
+                                );
+                              }
 
-                                    final items = <DropdownMenuItem<String>>[
-                                      for (final d in docs)
-                                        DropdownMenuItem(
-                                          value: d.id,
-                                          child: Text((d.data()['name'] as String?) ?? d.id),
-                                        ),
-                                    ];
+                              final selected = (_classSectionId != null && ids.contains(_classSectionId))
+                                  ? _classSectionId!
+                                  : ids.first;
 
-                                    return DropdownButtonFormField<String>(
-                                      key: ValueKey(selected),
-                                      initialValue: selected,
-                                      items: items,
-                                      onChanged: (v) => setState(() => _classId = v),
-                                      decoration: const InputDecoration(
-                                        labelText: 'Class',
-                                        border: OutlineInputBorder(),
-                                        prefixIcon: Icon(Icons.class_outlined),
-                                      ),
-                                      validator: (v) => (v == null || v.isEmpty) ? 'Select class' : null,
-                                    );
-                                  },
+                              if (_classSectionId == null || _classSectionId != selected) {
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  if (!mounted) return;
+                                  final parts = selected.split('_');
+                                  setState(() {
+                                    _classSectionId = selected;
+                                    _classId = parts.first;
+                                    _sectionId = parts.sublist(1).join('_');
+                                  });
+                                });
+                              }
+
+                              return DropdownButtonFormField<String>(
+                                key: ValueKey(selected),
+                                initialValue: selected,
+                                items: [
+                                  for (final id in ids) DropdownMenuItem(value: id, child: Text(id)),
+                                ],
+                                onChanged: (v) {
+                                  if (v == null) return;
+                                  final parts = v.split('_');
+                                  setState(() {
+                                    _classSectionId = v;
+                                    _classId = parts.first;
+                                    _sectionId = parts.sublist(1).join('_');
+                                  });
+                                },
+                                decoration: const InputDecoration(
+                                  labelText: 'Class/Section (assigned)',
+                                  border: OutlineInputBorder(),
+                                  prefixIcon: Icon(Icons.class_outlined),
                                 ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: StreamBuilder(
-                                  stream: sectionsStream,
-                                  builder: (context, snap) {
-                                    if (snap.connectionState == ConnectionState.waiting) {
-                                      return const Padding(
-                                        padding: EdgeInsets.symmetric(vertical: 6),
-                                        child: LinearProgressIndicator(),
-                                      );
-                                    }
-
-                                    final docs = snap.data?.docs ?? const [];
-                                    final ids = docs.map((d) => d.id).toSet();
-                                    final selected =
-                                        (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
-
-                                    final items = <DropdownMenuItem<String>>[
-                                      for (final d in docs)
-                                        DropdownMenuItem(
-                                          value: d.id,
-                                          child: Text((d.data()['name'] as String?) ?? d.id),
-                                        ),
-                                    ];
-
-                                    return DropdownButtonFormField<String>(
-                                      key: ValueKey(selected),
-                                      initialValue: selected,
-                                      items: items,
-                                      onChanged: (v) => setState(() => _sectionId = v),
-                                      decoration: const InputDecoration(
-                                        labelText: 'Section',
-                                        border: OutlineInputBorder(),
-                                        prefixIcon: Icon(Icons.group_outlined),
-                                      ),
-                                      validator: (v) => (v == null || v.isEmpty) ? 'Select section' : null,
-                                    );
-                                  },
-                                ),
-                              ),
-                            ],
+                                validator: (v) => (v == null || v.isEmpty) ? 'Select class/section' : null,
+                              );
+                            },
                           ),
                           const SizedBox(height: 12),
                           DropdownButtonFormField<String>(

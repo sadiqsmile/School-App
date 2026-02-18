@@ -10,6 +10,7 @@ import '../../models/user_role.dart';
 import '../../widgets/dashboard_ui.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/notification_token_registration_runner.dart';
+import '../../utils/parent_auth_email.dart';
 import '../parent/students/student_list_screen.dart';
 import '../parent/attendance/parent_attendance_screen.dart';
 import '../parent/homework/parent_homework_list_screen.dart';
@@ -25,62 +26,63 @@ class ParentDashboard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
+    final authUserAsync = ref.watch(firebaseAuthUserProvider);
 
-    return FutureBuilder<String?>(
-      future: ref.read(authServiceProvider).getParentMobile(),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: LoadingView(message: 'Loading…')));
-        }
-        final parentMobile = snap.data;
-        if (parentMobile == null || parentMobile.isEmpty) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Parent Dashboard')),
-            body: const Center(child: Text('Please login again.')),
-          );
-        }
+    final authUser = authUserAsync.asData?.value;
+    final parentMobile = tryExtractMobileFromParentEmail(authUser?.email);
+    final parentUid = authUser?.uid;
 
-        final scheme = Theme.of(context).colorScheme;
-        final width = MediaQuery.sizeOf(context).width;
-        final crossAxisCount = width >= 900
-            ? 3
-            : width >= 560
-                ? 2
-                : 1;
+    if (authUserAsync.isLoading) {
+      return const Scaffold(body: Center(child: LoadingView(message: 'Loading…')));
+    }
+    if (authUser == null || parentMobile == null || parentUid == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Parent Dashboard')),
+        body: const Center(child: Text('Please login again.')),
+      );
+    }
 
-        final yearText = yearAsync.when(
-          data: (yearId) => 'Academic Year: $yearId',
-          loading: () => 'Academic Year: …',
-          error: (_, _) => 'Academic Year: (not set)',
-        );
+      final scheme = Theme.of(context).colorScheme;
+      final width = MediaQuery.sizeOf(context).width;
+      final crossAxisCount = width >= 900
+        ? 3
+        : width >= 560
+          ? 2
+          : 1;
 
-        final yearId = yearAsync.asData?.value;
+    final yearText = yearAsync.when(
+      data: (yearId) => 'Academic Year: $yearId',
+      loading: () => 'Academic Year: …',
+      error: (_, _) => 'Academic Year: (not set)',
+    );
 
-        return Scaffold(
-          appBar: AppBar(
-            title: const Text('Parent Dashboard'),
-            actions: [
-              IconButton(
-                tooltip: 'Sign out',
-                onPressed: () async {
-                  await ref.read(authServiceProvider).signOut();
-                  if (context.mounted) context.go('/login');
-                },
-                icon: const Icon(Icons.logout),
-              ),
-            ],
+    final yearId = yearAsync.asData?.value;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Parent Dashboard'),
+        actions: [
+          IconButton(
+            tooltip: 'Sign out',
+            onPressed: () async {
+              await ref.read(authServiceProvider).signOut();
+              if (context.mounted) context.go('/login');
+            },
+            icon: const Icon(Icons.logout),
           ),
-          body: DashboardBackground(
-            child: SafeArea(
-              child: CustomScrollView(
-                slivers: [
-                  SliverToBoxAdapter(
-                    child: NotificationTokenRegistrationRunner.parent(
-                      parentMobile: parentMobile,
-                      // TODO: For Web Push you must provide a VAPID key.
-                      // vapidKey: 'YOUR_WEB_PUSH_VAPID_KEY',
-                    ),
-                  ),
+        ],
+      ),
+      body: DashboardBackground(
+        child: SafeArea(
+          child: CustomScrollView(
+            slivers: [
+              SliverToBoxAdapter(
+                child: NotificationTokenRegistrationRunner.parent(
+                  parentMobile: parentMobile,
+                  // TODO: For Web Push you must provide a VAPID key.
+                  // vapidKey: 'YOUR_WEB_PUSH_VAPID_KEY',
+                ),
+              ),
                   SliverPadding(
                     padding: const EdgeInsets.all(16),
                     sliver: SliverToBoxAdapter(
@@ -96,6 +98,8 @@ class ParentDashboard extends ConsumerWidget {
                     sliver: SliverToBoxAdapter(
                       child: _ParentSummaryRow(
                         yearId: yearId,
+                        // During migration, many year-student docs still contain legacy
+                        // parent mobile numbers in `parentUids`.
                         parentUid: parentMobile,
                         roleLabel: 'parent',
                       ),
@@ -183,11 +187,9 @@ class ParentDashboard extends ConsumerWidget {
                     ),
                   ),
                 ],
-              ),
-            ),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

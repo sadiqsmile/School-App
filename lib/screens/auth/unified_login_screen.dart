@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../providers/core_providers.dart';
@@ -26,6 +28,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
   final _parentPasswordController = TextEditingController();
   bool _parentObscure = true;
   bool _parentLoading = false;
+  String? _parentStatus;
 
   // Teacher
   final _teacherFormKey = GlobalKey<FormState>();
@@ -75,6 +78,45 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  String _prettyError(Object e) {
+    if (e is FirebaseAuthException) {
+      // Avoid account enumeration. Keep messages generic for credential errors.
+      switch (e.code) {
+        case 'invalid-credential':
+        case 'wrong-password':
+        case 'user-not-found':
+          return 'Wrong details. Please check your login and try again.';
+        case 'user-disabled':
+          return 'This account is disabled. Please contact the admin.';
+        case 'too-many-requests':
+          return 'Too many attempts. Please try again later.';
+        case 'network-request-failed':
+          return 'Network error. Please check your internet and try again.';
+        case 'invalid-email':
+          return 'Invalid email address.';
+        case 'operation-not-allowed':
+          return 'Sign-in is not enabled for this app. Please contact the admin.';
+        case 'weak-password':
+          return 'Password must be at least 6 characters.';
+        case 'requires-recent-login':
+          return 'Please sign in again and retry.';
+        default:
+          // Prefer a clean message if present.
+          final msg = (e.message ?? '').trim();
+          return msg.isEmpty ? 'Login failed. Please try again.' : msg;
+      }
+    }
+
+    final raw = e.toString();
+    // Common Dart Exception formatting.
+    const prefix = 'Exception: ';
+    final msg = raw.startsWith(prefix) ? raw.substring(prefix.length) : raw;
+    if (msg.toLowerCase().contains('wrong password')) {
+      return 'Wrong details. Please check your login and try again.';
+    }
+    return msg;
+  }
+
   Future<void> _signInParent() async {
     if (!(_parentFormKey.currentState?.validate() ?? false)) return;
     setState(() => _parentLoading = true);
@@ -82,16 +124,23 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
       await ref.read(authServiceProvider).signInParent(
             phoneNumber: _parentPhoneController.text.trim(),
             password: _parentPasswordController.text,
+            onStatus: (m) {
+              if (!mounted) return;
+              setState(() => _parentStatus = m);
+            },
           );
-      // Parent login does not use Firebase Auth, so we navigate explicitly.
-      if (mounted) {
-        context.go('/parent');
-      }
+      // Parent is now a FirebaseAuth user. Let the splash/router decide.
+      if (mounted) context.go('/');
     } catch (e) {
       if (!mounted) return;
-      _snack('Login failed: $e');
+      _snack(_prettyError(e));
     } finally {
-      if (mounted) setState(() => _parentLoading = false);
+      if (mounted) {
+        setState(() {
+          _parentLoading = false;
+          _parentStatus = null;
+        });
+      }
     }
   }
 
@@ -105,7 +154,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
           );
     } catch (e) {
       if (!mounted) return;
-      _snack('Login failed: $e');
+      _snack(_prettyError(e));
     } finally {
       if (mounted) setState(() => _teacherLoading = false);
     }
@@ -121,7 +170,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
           );
     } catch (e) {
       if (!mounted) return;
-      _snack('Login failed: $e');
+      _snack(_prettyError(e));
     } finally {
       if (mounted) setState(() => _adminLoading = false);
     }
@@ -135,7 +184,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
       footer: [
         Text(
           _tab == LoginTab.parent
-              ? 'Tip: Default parent password is the last 4 digits of the mobile number.'
+              ? 'Tip: Default parent password is the last 4 digits of the mobile number.\nFirst sign-in may take a moment while your account is upgraded.'
               : 'Use the account created by the Admin.',
           style: Theme.of(context).textTheme.bodySmall,
           textAlign: TextAlign.center,
@@ -179,6 +228,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                     passwordController: _parentPasswordController,
                     loading: _parentLoading,
                     obscure: _parentObscure,
+                    statusMessage: _parentStatus,
                     onToggleObscure: () => setState(() => _parentObscure = !_parentObscure),
                     onSubmit: _signInParent,
                   ),
@@ -349,6 +399,7 @@ class _ParentForm extends StatelessWidget {
     required this.passwordController,
     required this.loading,
     required this.obscure,
+    required this.statusMessage,
     required this.onToggleObscure,
     required this.onSubmit,
   });
@@ -358,6 +409,7 @@ class _ParentForm extends StatelessWidget {
   final TextEditingController passwordController;
   final bool loading;
   final bool obscure;
+  final String? statusMessage;
   final VoidCallback onToggleObscure;
   final VoidCallback onSubmit;
 
@@ -397,17 +449,28 @@ class _ParentForm extends StatelessWidget {
             style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 8),
+          Text(
+            'Use your mobile number and password.\nNo OTP. We’ll securely upgrade your login automatically on first sign-in.',
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 12),
           TextFormField(
             controller: phoneController,
             keyboardType: TextInputType.phone,
             textInputAction: TextInputAction.next,
             autofillHints: const [AutofillHints.telephoneNumber],
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(10),
+            ],
             decoration: deco(label: 'Mobile number', icon: Icons.phone_android),
             validator: (value) {
               final v = (value ?? '').trim();
-              if (v.isEmpty) return 'Enter mobile number';
-              if (v.length < 8) return 'Enter a valid mobile number';
+              final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+              if (digits.isEmpty) return 'Enter mobile number';
+              if (digits.length != 10) return 'Enter a valid 10-digit mobile number';
               return null;
             },
           ),
@@ -447,6 +510,27 @@ class _ParentForm extends StatelessWidget {
               label: const Text('Sign in'),
             ),
           ),
+          if (loading && (statusMessage ?? '').trim().isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: 8),
+                Flexible(
+                  child: Text(
+                    statusMessage!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );

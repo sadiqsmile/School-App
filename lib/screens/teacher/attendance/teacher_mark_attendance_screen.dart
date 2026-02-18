@@ -34,26 +34,22 @@ class _TeacherMarkAttendanceScreenState
   bool _saving = false;
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _initializeFrom({
     required List<StudentBase> students,
     required bool dayExists,
-    required Map<String, dynamic>? dayData,
+    required Map<String, dynamic>? summaryData,
   }) {
     if (_initialized) return;
-
-    final raw = (dayData == null ? null : dayData['records']);
-    final existing = (raw is Map)
-        ? raw.map((k, v) => MapEntry(k.toString(), v?.toString()))
-        : const <String, String?>{};
 
     // Default to Present to make marking fast.
     final next = <String, bool>{};
     for (final s in students) {
-      final v = existing[s.id];
-      next[s.id] = (v == 'A') ? false : true;
+      next[s.id] = true;
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -65,12 +61,17 @@ class _TeacherMarkAttendanceScreenState
         _initialized = true;
       });
       if (dayExists) {
-        _snack('Attendance already exists for this date. Save will overwrite if you confirm.');
+        _snack(
+          'Attendance already exists for this date. Save will overwrite if you confirm.',
+        );
       }
     });
   }
 
-  Future<void> _save({required bool overwriteIfExists}) async {
+  Future<void> _save({
+    required bool overwriteIfExists,
+    required List<StudentBase> students,
+  }) async {
     final teacher = ref.read(firebaseAuthUserProvider).asData?.value;
     if (teacher == null) return;
 
@@ -81,12 +82,15 @@ class _TeacherMarkAttendanceScreenState
         records[e.key] = e.value ? 'P' : 'A';
       }
 
-      await ref.read(attendanceServiceProvider).saveAttendanceDay(
+      await ref
+          .read(attendanceServiceProvider)
+          .saveAttendanceDayV3(
             yearId: widget.yearId,
             classId: widget.classId,
             sectionId: widget.sectionId,
             date: widget.date,
-            markedByTeacherUid: teacher.uid,
+            markedByUid: teacher.uid,
+            students: students,
             records: records,
             overwriteIfExists: overwriteIfExists,
           );
@@ -119,7 +123,7 @@ class _TeacherMarkAttendanceScreenState
       classId: widget.classId,
       sectionId: widget.sectionId,
     );
-    final dayStream = attendance.watchAttendanceDay(
+    final summaryStream = attendance.watchAttendanceSummaryDay(
       yearId: widget.yearId,
       classId: widget.classId,
       sectionId: widget.sectionId,
@@ -136,7 +140,9 @@ class _TeacherMarkAttendanceScreenState
         stream: studentsStream,
         builder: (context, studentsSnap) {
           if (studentsSnap.connectionState == ConnectionState.waiting) {
-            return const Center(child: LoadingView(message: 'Loading students…'));
+            return const Center(
+              child: LoadingView(message: 'Loading students…'),
+            );
           }
           if (studentsSnap.hasError) {
             return Center(child: Text('Error: ${studentsSnap.error}'));
@@ -156,20 +162,26 @@ class _TeacherMarkAttendanceScreenState
           }
 
           return StreamBuilder(
-            stream: dayStream,
+            stream: summaryStream,
             builder: (context, daySnap) {
               if (daySnap.connectionState == ConnectionState.waiting) {
-                return const Center(child: LoadingView(message: 'Loading attendance…'));
+                return const Center(
+                  child: LoadingView(message: 'Loading attendance…'),
+                );
               }
               if (daySnap.hasError) {
                 return Center(child: Text('Error: ${daySnap.error}'));
               }
 
-              final dayDoc = daySnap.data;
-              final exists = dayDoc?.exists == true;
-              final data = dayDoc?.data();
+              final summaryDoc = daySnap.data;
+              final exists = summaryDoc?.exists == true;
+              final data = summaryDoc?.data();
 
-              _initializeFrom(students: students, dayExists: exists, dayData: data);
+              _initializeFrom(
+                students: students,
+                dayExists: exists,
+                summaryData: data,
+              );
 
               if (!_initialized) {
                 return const Center(child: LoadingView(message: 'Preparing…'));
@@ -179,8 +191,13 @@ class _TeacherMarkAttendanceScreenState
               final presentCount = _present.values.where((v) => v).length;
               final absentCount = total - presentCount;
 
-              final markedBy = (data == null ? null : data['markedByTeacherUid']) as String?;
-              final markedInfo = exists && markedBy != null ? 'Marked by: $markedBy' : null;
+                  final markedBy = data == null
+                    ? null
+                    : (data['markedByUid'] as String?) ??
+                      (data['markedByTeacherUid'] as String?);
+              final markedInfo = exists && markedBy != null
+                  ? 'Marked by: $markedBy'
+                  : null;
 
               return Column(
                 children: [
@@ -204,16 +221,30 @@ class _TeacherMarkAttendanceScreenState
                                   ),
                                   if (markedInfo != null) ...[
                                     const SizedBox(height: 4),
-                                    Text(markedInfo, style: Theme.of(context).textTheme.bodySmall),
+                                    Text(
+                                      markedInfo,
+                                      style: Theme.of(
+                                        context,
+                                      ).textTheme.bodySmall,
+                                    ),
                                   ],
                                   const SizedBox(height: 8),
                                   Wrap(
                                     spacing: 10,
                                     runSpacing: 6,
                                     children: [
-                                      _CountChip(label: 'Total', value: total.toString()),
-                                      _CountChip(label: 'Present', value: presentCount.toString()),
-                                      _CountChip(label: 'Absent', value: absentCount.toString()),
+                                      _CountChip(
+                                        label: 'Total',
+                                        value: total.toString(),
+                                      ),
+                                      _CountChip(
+                                        label: 'Present',
+                                        value: presentCount.toString(),
+                                      ),
+                                      _CountChip(
+                                        label: 'Absent',
+                                        value: absentCount.toString(),
+                                      ),
                                     ],
                                   ),
                                 ],
@@ -228,33 +259,47 @@ class _TeacherMarkAttendanceScreenState
                                         final ok = await showDialog<bool>(
                                           context: context,
                                           builder: (_) => AlertDialog(
-                                            title: const Text('Overwrite attendance?'),
+                                            title: const Text(
+                                              'Overwrite attendance?',
+                                            ),
                                             content: Text(
                                               'Attendance is already marked for $dateText (${widget.classId}-${widget.sectionId}).\n\nDo you want to overwrite it?',
                                             ),
                                             actions: [
                                               TextButton(
-                                                onPressed: () => Navigator.of(context).pop(false),
+                                                onPressed: () => Navigator.of(
+                                                  context,
+                                                ).pop(false),
                                                 child: const Text('Cancel'),
                                               ),
                                               FilledButton(
-                                                onPressed: () => Navigator.of(context).pop(true),
+                                                onPressed: () => Navigator.of(
+                                                  context,
+                                                ).pop(true),
                                                 child: const Text('Overwrite'),
                                               ),
                                             ],
                                           ),
                                         );
                                         if (ok != true) return;
-                                        await _save(overwriteIfExists: true);
+                                        await _save(
+                                          overwriteIfExists: true,
+                                          students: students,
+                                        );
                                       } else {
-                                        await _save(overwriteIfExists: false);
+                                        await _save(
+                                          overwriteIfExists: false,
+                                          students: students,
+                                        );
                                       }
                                     },
                               icon: _saving
                                   ? const SizedBox(
                                       height: 18,
                                       width: 18,
-                                      child: CircularProgressIndicator(strokeWidth: 2),
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
                                     )
                                   : const Icon(Icons.save_outlined),
                               label: const Text('Save'),
@@ -278,20 +323,18 @@ class _TeacherMarkAttendanceScreenState
                               s.fullName,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .titleMedium
+                              style: Theme.of(context).textTheme.titleMedium
                                   ?.copyWith(fontWeight: FontWeight.w700),
                             ),
-                            subtitle: Text('Admission: ${s.admissionNo ?? '-'}'),
+                            subtitle: Text(
+                              'Admission: ${s.admissionNo ?? '-'}',
+                            ),
                             trailing: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 Text(
                                   isPresent ? 'P' : 'A',
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
+                                  style: Theme.of(context).textTheme.titleSmall
                                       ?.copyWith(fontWeight: FontWeight.w900),
                                 ),
                                 const SizedBox(width: 8),

@@ -142,12 +142,18 @@ class _NotificationComposerScreenState extends ConsumerState<NotificationCompose
     );
   }
 
-  Future<void> _send({required String createdByUid, required String createdByName, required String createdByRole}) async {
+  Future<void> _send({
+    required String yearId,
+    required String createdByUid,
+    required String createdByName,
+    required String createdByRole,
+  }) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     setState(() => _sending = true);
     try {
       await ref.read(notificationServiceProvider).createNotification(
+            yearId: yearId,
             title: _titleCtrl.text,
             body: _bodyCtrl.text,
             scope: _scope,
@@ -187,15 +193,21 @@ class _NotificationComposerScreenState extends ConsumerState<NotificationCompose
       return const Center(child: Text('Please login again.'));
     }
 
+    final yearAsync = ref.watch(activeAcademicYearIdProvider);
+
     final appUserAsync = ref.watch(appUserProvider);
 
-    return appUserAsync.when(
-      loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
-      error: (err, _) => Center(child: Text('Error: $err')),
-      data: (appUser) {
-        final createdByUid = authUser.uid;
-        final createdByName = appUser.displayName;
-        final createdByRole = appUser.role.asString;
+    return yearAsync.when(
+      loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
+      error: (e, _) => Center(child: Text('Error: $e')),
+      data: (yearId) {
+        return appUserAsync.when(
+          loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
+          error: (err, _) => Center(child: Text('Error: $err')),
+          data: (appUser) {
+            final createdByUid = authUser.uid;
+            final createdByName = appUser.displayName;
+            final createdByRole = appUser.role.asString;
 
         // Scope options:
         // - Admin: all scopes
@@ -209,9 +221,9 @@ class _NotificationComposerScreenState extends ConsumerState<NotificationCompose
           _groupId = allowedGroups.isEmpty ? null : allowedGroups.first;
         }
 
-        return AbsorbPointer(
-          absorbing: _sending,
-          child: ListView(
+            return AbsorbPointer(
+              absorbing: _sending,
+              child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
               if (_sending)
@@ -484,6 +496,7 @@ class _NotificationComposerScreenState extends ConsumerState<NotificationCompose
                           height: 52,
                           child: FilledButton.icon(
                             onPressed: () => _send(
+                              yearId: yearId,
                               createdByUid: createdByUid,
                               createdByName: createdByName,
                               createdByRole: createdByRole,
@@ -498,7 +511,9 @@ class _NotificationComposerScreenState extends ConsumerState<NotificationCompose
                 ),
               ),
             ],
-          ),
+              ),
+            );
+          },
         );
       },
     );

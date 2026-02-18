@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter/services.dart';
 
 import '../../../models/student_base.dart';
 import '../../../providers/auth_providers.dart';
@@ -12,25 +12,79 @@ class AdminAttendanceScreen extends ConsumerStatefulWidget {
   const AdminAttendanceScreen({super.key});
 
   @override
-  ConsumerState<AdminAttendanceScreen> createState() => _AdminAttendanceScreenState();
+  ConsumerState<AdminAttendanceScreen> createState() =>
+      _AdminAttendanceScreenState();
 }
 
 class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
   String? _classId;
   String? _sectionId;
   DateTime _date = DateTime.now();
+  bool _exporting = false;
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   String _escapeCsv(String value) {
-    final needsQuotes = value.contains(',') || value.contains('"') || value.contains('\n') || value.contains('\r');
+    final needsQuotes =
+        value.contains(',') ||
+        value.contains('"') ||
+        value.contains('\n') ||
+        value.contains('\r');
     final escaped = value.replaceAll('"', '""');
     return needsQuotes ? '"$escaped"' : escaped;
   }
 
-  String _buildCsv({
+  String _buildSummaryCsv({
+    required String classId,
+    required String sectionId,
+    required DateTime date,
+    required int total,
+    required int present,
+    required int absent,
+    required String markedBy,
+  }) {
+    final rows = <String>[];
+    rows.add('Date,Class,Section,Total,Present,Absent,MarkedBy');
+    rows.add(
+      '${_escapeCsv(DateFormat('yyyy-MM-dd').format(date))},'
+      '${_escapeCsv(classId)},'
+      '${_escapeCsv(sectionId)},'
+      '${_escapeCsv(total.toString())},'
+      '${_escapeCsv(present.toString())},'
+      '${_escapeCsv(absent.toString())},'
+      '${_escapeCsv(markedBy)}',
+    );
+    return rows.join('\n');
+  }
+
+  String _buildSummaryTsv({
+    required String classId,
+    required String sectionId,
+    required DateTime date,
+    required int total,
+    required int present,
+    required int absent,
+    required String markedBy,
+  }) {
+    final rows = <String>[];
+    rows.add('Date\tClass\tSection\tTotal\tPresent\tAbsent\tMarkedBy');
+    rows.add(
+      '${DateFormat('yyyy-MM-dd').format(date)}\t'
+      '$classId\t'
+      '$sectionId\t'
+      '$total\t'
+      '$present\t'
+      '$absent\t'
+      '$markedBy',
+    );
+    return rows.join('\n');
+  }
+
+  String _buildDetailedCsv({
     required List<StudentBase> students,
     required Map<String, String> records,
   }) {
@@ -39,12 +93,14 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
     for (final s in students) {
       final admission = s.admissionNo ?? '';
       final status = records[s.id] ?? '';
-      rows.add('${_escapeCsv(admission)},${_escapeCsv(s.fullName)},${_escapeCsv(status)}');
+      rows.add(
+        '${_escapeCsv(admission)},${_escapeCsv(s.fullName)},${_escapeCsv(status)}',
+      );
     }
     return rows.join('\n');
   }
 
-  String _buildTsv({
+  String _buildDetailedTsv({
     required List<StudentBase> students,
     required Map<String, String> records,
   }) {
@@ -56,6 +112,31 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
       rows.add('$admission\t${s.fullName}\t$status');
     }
     return rows.join('\n');
+  }
+
+  Future<Map<String, String>> _loadDetailedRecords({
+    required String yearId,
+    required DateTime date,
+    required List<StudentBase> students,
+  }) async {
+    final attendance = ref.read(attendanceServiceProvider);
+    final normalized = DateTime(date.year, date.month, date.day);
+
+    final records = <String, String>{};
+    for (final s in students) {
+      final snap = await attendance
+          .attendanceStudentDayDoc(
+            yearId: yearId,
+            studentId: s.id,
+            date: normalized,
+          )
+          .get();
+      final status = (snap.data()?['status'] as String?);
+      if (status == 'P' || status == 'A') {
+        records[s.id] = status!;
+      }
+    }
+    return records;
   }
 
   @override
@@ -73,7 +154,8 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
     final sectionsStream = adminData.watchSections();
 
     return yearAsync.when(
-      loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
+      loading: () =>
+          const Center(child: LoadingView(message: 'Loading academic year…')),
       error: (err, _) => Center(child: Text('Error: $err')),
       data: (yearId) {
         return Column(
@@ -88,10 +170,15 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                     children: [
                       Text(
                         'Attendance Report',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text('Academic Year: $yearId', style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        'Academic Year: $yearId',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 12),
                       Row(
                         children: [
@@ -99,7 +186,8 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                             child: StreamBuilder(
                               stream: classesStream,
                               builder: (context, snap) {
-                                if (snap.connectionState == ConnectionState.waiting) {
+                                if (snap.connectionState ==
+                                    ConnectionState.waiting) {
                                   return const Padding(
                                     padding: EdgeInsets.symmetric(vertical: 6),
                                     child: LinearProgressIndicator(),
@@ -107,20 +195,29 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                                 }
                                 final docs = snap.data?.docs ?? const [];
                                 final ids = docs.map((d) => d.id).toSet();
-                                final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
+                                final selected =
+                                    (_classId != null && ids.contains(_classId))
+                                    ? _classId
+                                    : null;
                                 final items = <DropdownMenuItem<String?>>[
-                                  const DropdownMenuItem(value: null, child: Text('Select class')),
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Select class'),
+                                  ),
                                   for (final d in docs)
                                     DropdownMenuItem(
                                       value: d.id,
-                                      child: Text((d.data()['name'] as String?) ?? d.id),
+                                      child: Text(
+                                        (d.data()['name'] as String?) ?? d.id,
+                                      ),
                                     ),
                                 ];
                                 return DropdownButtonFormField<String?>(
                                   key: ValueKey(selected),
                                   initialValue: selected,
                                   items: items,
-                                  onChanged: (v) => setState(() => _classId = v),
+                                  onChanged: (v) =>
+                                      setState(() => _classId = v),
                                   decoration: const InputDecoration(
                                     labelText: 'Class',
                                     border: OutlineInputBorder(),
@@ -135,7 +232,8 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                             child: StreamBuilder(
                               stream: sectionsStream,
                               builder: (context, snap) {
-                                if (snap.connectionState == ConnectionState.waiting) {
+                                if (snap.connectionState ==
+                                    ConnectionState.waiting) {
                                   return const Padding(
                                     padding: EdgeInsets.symmetric(vertical: 6),
                                     child: LinearProgressIndicator(),
@@ -143,20 +241,30 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                                 }
                                 final docs = snap.data?.docs ?? const [];
                                 final ids = docs.map((d) => d.id).toSet();
-                                final selected = (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
+                                final selected =
+                                    (_sectionId != null &&
+                                        ids.contains(_sectionId))
+                                    ? _sectionId
+                                    : null;
                                 final items = <DropdownMenuItem<String?>>[
-                                  const DropdownMenuItem(value: null, child: Text('Select section')),
+                                  const DropdownMenuItem(
+                                    value: null,
+                                    child: Text('Select section'),
+                                  ),
                                   for (final d in docs)
                                     DropdownMenuItem(
                                       value: d.id,
-                                      child: Text((d.data()['name'] as String?) ?? d.id),
+                                      child: Text(
+                                        (d.data()['name'] as String?) ?? d.id,
+                                      ),
                                     ),
                                 ];
                                 return DropdownButtonFormField<String?>(
                                   key: ValueKey(selected),
                                   initialValue: selected,
                                   items: items,
-                                  onChanged: (v) => setState(() => _sectionId = v),
+                                  onChanged: (v) =>
+                                      setState(() => _sectionId = v),
                                   decoration: const InputDecoration(
                                     labelText: 'Section',
                                     border: OutlineInputBorder(),
@@ -199,7 +307,7 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Tip: Use “Copy CSV” or “Copy TSV” to export this report, or take a screenshot.',
+                        'Tip: “Copy summary” is fast. “Copy detailed” reads one doc per student (slower).',
                         style: Theme.of(context).textTheme.bodySmall,
                         textAlign: TextAlign.center,
                       ),
@@ -210,144 +318,249 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
             ),
             Expanded(
               child: (_classId == null || _sectionId == null)
-                  ? const Center(child: Text('Select class and section to view attendance.'))
-                  : StreamBuilder<List<StudentBase>>(
-                      stream: attendance.watchStudentsForClassSection(
+                  ? const Center(
+                      child: Text(
+                        'Select class and section to view attendance.',
+                      ),
+                    )
+                  : StreamBuilder(
+                      stream: attendance.watchAttendanceSummaryDay(
+                        yearId: yearId,
                         classId: _classId!,
                         sectionId: _sectionId!,
+                        date: _date,
                       ),
-                      builder: (context, studentsSnap) {
-                        if (studentsSnap.connectionState == ConnectionState.waiting) {
-                          return const Center(child: LoadingView(message: 'Loading students…'));
+                      builder: (context, summarySnap) {
+                        if (summarySnap.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: LoadingView(message: 'Loading attendance…'),
+                          );
                         }
-                        if (studentsSnap.hasError) {
-                          return Center(child: Text('Error: ${studentsSnap.error}'));
+                        if (summarySnap.hasError) {
+                          return Center(
+                            child: Text('Error: ${summarySnap.error}'),
+                          );
                         }
 
-                        final students = studentsSnap.data ?? const <StudentBase>[];
-                        if (students.isEmpty) {
-                          return const Center(child: Text('No students found for this class/section.'));
+                        final doc = summarySnap.data;
+                        final exists = doc?.exists == true;
+                        final data = doc?.data();
+
+                        if (!exists || data == null) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16),
+                              child: Text(
+                                'No attendance marked for this date yet.',
+                              ),
+                            ),
+                          );
                         }
 
-                        return StreamBuilder(
-                          stream: attendance.watchAttendanceDay(
-                            yearId: yearId,
-                            classId: _classId!,
-                            sectionId: _sectionId!,
-                            date: _date,
-                          ),
-                          builder: (context, daySnap) {
-                            if (daySnap.connectionState == ConnectionState.waiting) {
-                              return const Center(child: LoadingView(message: 'Loading attendance…'));
-                            }
-                            if (daySnap.hasError) {
-                              return Center(child: Text('Error: ${daySnap.error}'));
-                            }
+                        final total =
+                            (data['totalStudents'] as num?)?.toInt() ?? 0;
+                        final present =
+                            (data['presentCount'] as num?)?.toInt() ?? 0;
+                        final absent =
+                            (data['absentCount'] as num?)?.toInt() ?? 0;
+                        final markedByUid =
+                          (data['markedByUid'] as String?) ??
+                          (data['markedByTeacherUid'] as String?);
 
-                            final doc = daySnap.data;
-                            final exists = doc?.exists == true;
-                            final data = doc?.data();
+                        final classId = _classId!;
+                        final sectionId = _sectionId!;
 
-                            if (!exists) {
-                              return const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(16),
-                                  child: Text('No attendance marked for this date yet.'),
-                                ),
-                              );
-                            }
-
-                            final raw = (data == null ? null : data['records']);
-                            final records = <String, String>{};
-                            if (raw is Map) {
-                              for (final e in raw.entries) {
-                                final k = e.key.toString();
-                                final v = e.value?.toString();
-                                if (v != null && (v == 'P' || v == 'A')) {
-                                  records[k] = v;
-                                }
-                              }
-                            }
-
-                            var present = 0;
-                            var absent = 0;
-                            for (final s in students) {
-                              final v = records[s.id];
-                              if (v == 'P') present++;
-                              if (v == 'A') absent++;
-                            }
-
-                            final source = _AttendanceDataSource(students: students, records: records);
-
-                            final classId = _classId!;
-                            final sectionId = _sectionId!;
-
-                            final markedByUid = (data?['markedByTeacherUid'] as String?);
-
-                            return ListView(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                              children: [
-                                Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12),
-                                    child: Wrap(
-                                      spacing: 10,
-                                      runSpacing: 8,
-                                      children: [
-                                        Chip(label: Text('Total: ${students.length}')),
-                                        Chip(label: Text('Present: $present')),
-                                        Chip(label: Text('Absent: $absent')),
-                                        if (markedByUid == null)
-                                          const Chip(label: Text('Marked by: —'))
-                                        else
-                                          FutureBuilder<String?>(
-                                            future: ref
-                                                .read(userProfileServiceProvider)
-                                                .getUserDisplayNameOrNull(markedByUid),
-                                            builder: (context, nameSnap) {
-                                              final name = nameSnap.data;
-                                              final label = (name == null || name.trim().isEmpty)
-                                                  ? markedByUid
-                                                  : '$name ($markedByUid)';
-                                              return Chip(label: Text('Marked by: $label'));
+                        return ListView(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          children: [
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Wrap(
+                                  spacing: 10,
+                                  runSpacing: 8,
+                                  children: [
+                                    Chip(label: Text('Total: $total')),
+                                    Chip(label: Text('Present: $present')),
+                                    Chip(label: Text('Absent: $absent')),
+                                    if (markedByUid == null)
+                                      const Chip(label: Text('Marked by: —'))
+                                    else
+                                      FutureBuilder<String?>(
+                                        future: ref
+                                            .read(userProfileServiceProvider)
+                                            .getUserDisplayNameOrNull(
+                                              markedByUid,
+                                            ),
+                                        builder: (context, nameSnap) {
+                                          final name = nameSnap.data;
+                                          final label =
+                                              (name == null ||
+                                                  name.trim().isEmpty)
+                                              ? markedByUid
+                                              : '$name ($markedByUid)';
+                                          return Chip(
+                                            label: Text('Marked by: $label'),
+                                          );
+                                        },
+                                      ),
+                                    ActionChip(
+                                      label: const Text('Copy summary CSV'),
+                                      onPressed: _exporting
+                                          ? null
+                                          : () async {
+                                              final csv = _buildSummaryCsv(
+                                                classId: classId,
+                                                sectionId: sectionId,
+                                                date: _date,
+                                                total: total,
+                                                present: present,
+                                                absent: absent,
+                                                markedBy: markedByUid ?? '',
+                                              );
+                                              await Clipboard.setData(
+                                                ClipboardData(text: csv),
+                                              );
+                                              if (mounted) {
+                                                _snack(
+                                                  'Summary CSV copied to clipboard',
+                                                );
+                                              }
                                             },
-                                          ),
-                                        ActionChip(
-                                          label: const Text('Copy CSV'),
-                                          onPressed: () async {
-                                            final csv = _buildCsv(students: students, records: records);
-                                            await Clipboard.setData(ClipboardData(text: csv));
-                                            if (mounted) _snack('CSV copied to clipboard');
-                                          },
-                                        ),
-                                        ActionChip(
-                                          label: const Text('Copy TSV'),
-                                          onPressed: () async {
-                                            final tsv = _buildTsv(students: students, records: records);
-                                            await Clipboard.setData(ClipboardData(text: tsv));
-                                            if (mounted) _snack('TSV copied to clipboard');
-                                          },
-                                        ),
-                                      ],
                                     ),
-                                  ),
+                                    ActionChip(
+                                      label: const Text('Copy summary TSV'),
+                                      onPressed: _exporting
+                                          ? null
+                                          : () async {
+                                              final tsv = _buildSummaryTsv(
+                                                classId: classId,
+                                                sectionId: sectionId,
+                                                date: _date,
+                                                total: total,
+                                                present: present,
+                                                absent: absent,
+                                                markedBy: markedByUid ?? '',
+                                              );
+                                              await Clipboard.setData(
+                                                ClipboardData(text: tsv),
+                                              );
+                                              if (mounted) {
+                                                _snack(
+                                                  'Summary TSV copied to clipboard',
+                                                );
+                                              }
+                                            },
+                                    ),
+                                    ActionChip(
+                                      label: const Text(
+                                        'Copy detailed CSV (slow)',
+                                      ),
+                                      onPressed: _exporting
+                                          ? null
+                                          : () async {
+                                              setState(() => _exporting = true);
+                                              try {
+                                                final students = await attendance
+                                                    .watchStudentsForClassSection(
+                                                      classId: classId,
+                                                      sectionId: sectionId,
+                                                    )
+                                                    .first;
+                                                final records =
+                                                    await _loadDetailedRecords(
+                                                      yearId: yearId,
+                                                      date: _date,
+                                                      students: students,
+                                                    );
+                                                final csv = _buildDetailedCsv(
+                                                  students: students,
+                                                  records: records,
+                                                );
+                                                await Clipboard.setData(
+                                                  ClipboardData(text: csv),
+                                                );
+                                                if (mounted) {
+                                                  _snack(
+                                                    'Detailed CSV copied to clipboard',
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                if (mounted) {
+                                                  _snack('Export failed: $e');
+                                                }
+                                              } finally {
+                                                if (mounted) {
+                                                  setState(
+                                                    () => _exporting = false,
+                                                  );
+                                                }
+                                              }
+                                            },
+                                    ),
+                                    ActionChip(
+                                      label: const Text(
+                                        'Copy detailed TSV (slow)',
+                                      ),
+                                      onPressed: _exporting
+                                          ? null
+                                          : () async {
+                                              setState(() => _exporting = true);
+                                              try {
+                                                final students = await attendance
+                                                    .watchStudentsForClassSection(
+                                                      classId: classId,
+                                                      sectionId: sectionId,
+                                                    )
+                                                    .first;
+                                                final records =
+                                                    await _loadDetailedRecords(
+                                                      yearId: yearId,
+                                                      date: _date,
+                                                      students: students,
+                                                    );
+                                                final tsv = _buildDetailedTsv(
+                                                  students: students,
+                                                  records: records,
+                                                );
+                                                await Clipboard.setData(
+                                                  ClipboardData(text: tsv),
+                                                );
+                                                if (mounted) {
+                                                  _snack(
+                                                    'Detailed TSV copied to clipboard',
+                                                  );
+                                                }
+                                              } catch (e) {
+                                                if (mounted) {
+                                                  _snack('Export failed: $e');
+                                                }
+                                              } finally {
+                                                if (mounted) {
+                                                  setState(
+                                                    () => _exporting = false,
+                                                  );
+                                                }
+                                              }
+                                            },
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(height: 12),
-                                Card(
-                                  child: PaginatedDataTable(
-                                    header: Text('$classId-$sectionId • ${DateFormat('dd MMM yyyy').format(_date)}'),
-                                    rowsPerPage: 25,
-                                    columns: const [
-                                      DataColumn(label: Text('Admission')),
-                                      DataColumn(label: Text('Student')),
-                                      DataColumn(label: Text('Status')),
-                                    ],
-                                    source: source,
-                                  ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Card(
+                              child: Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  '$classId-$sectionId • ${DateFormat('dd MMM yyyy').format(_date)}\n\n'
+                                  'This report reads Attendance v3 daily summaries.\n'
+                                  'Use the export buttons above for summary or per-student output.',
                                 ),
-                              ],
-                            );
-                          },
+                              ),
+                            ),
+                          ],
                         );
                       },
                     ),
@@ -357,42 +570,4 @@ class _AdminAttendanceScreenState extends ConsumerState<AdminAttendanceScreen> {
       },
     );
   }
-}
-
-class _AttendanceDataSource extends DataTableSource {
-  _AttendanceDataSource({required this.students, required this.records});
-
-  final List<StudentBase> students;
-  final Map<String, String> records;
-
-  @override
-  DataRow? getRow(int index) {
-    if (index < 0 || index >= students.length) return null;
-    final s = students[index];
-    final status = records[s.id];
-    final label = status ?? '—';
-    final color = switch (status) {
-      'P' => Colors.green,
-      'A' => Colors.red,
-      _ => Colors.grey,
-    };
-
-    return DataRow.byIndex(
-      index: index,
-      cells: [
-        DataCell(Text(s.admissionNo ?? '-')),
-        DataCell(Text(s.fullName)),
-        DataCell(Text(label, style: TextStyle(fontWeight: FontWeight.w900, color: color))),
-      ],
-    );
-  }
-
-  @override
-  bool get isRowCountApproximate => false;
-
-  @override
-  int get rowCount => students.length;
-
-  @override
-  int get selectedRowCount => 0;
 }

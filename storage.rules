@@ -1,28 +1,122 @@
 rules_version = '2';
+
 service firebase.storage {
   match /b/{bucket}/o {
-    function isSignedIn() {
+
+    function signedIn() {
       return request.auth != null;
     }
 
-    function role(schoolId) {
-      return firestore.get(
-        /databases/(default)/documents/schools/$(schoolId)/users/$(request.auth.uid)
-      ).data.role;
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function userDoc(schoolId) {
+      return firestore.get(/databases/(default)/documents/schools/$(schoolId)/users/$(uid())).data;
+    }
+
+    function hasUserDoc(schoolId) {
+      return firestore.exists(/databases/(default)/documents/schools/$(schoolId)/users/$(uid()));
+    }
+
+    function myRole(schoolId) {
+      return hasUserDoc(schoolId) ? userDoc(schoolId).role : null;
+    }
+
+    function isActiveUser(schoolId) {
+      return hasUserDoc(schoolId) && (!("isActive" in userDoc(schoolId)) || userDoc(schoolId).isActive == true);
     }
 
     function isAdmin(schoolId) {
-      return isSignedIn() && role(schoolId) == 'admin';
+      return isActiveUser(schoolId) && myRole(schoolId) == 'admin';
     }
 
     function isTeacher(schoolId) {
-      return isSignedIn() && role(schoolId) == 'teacher';
+      return isActiveUser(schoolId) && myRole(schoolId) == 'teacher';
     }
 
-    // All files are stored under: /schools/{schoolId}/...
-    match /schools/{schoolId}/{allPaths=**} {
-      allow read: if isSignedIn();
-      allow write: if isAdmin(schoolId) || isTeacher(schoolId);
+    function isParent(schoolId) {
+      return isActiveUser(schoolId) && myRole(schoolId) == 'parent';
+    }
+
+    function teacherAssignmentIds(schoolId) {
+      return firestore.exists(/databases/(default)/documents/schools/$(schoolId)/teacherAssignments/$(uid()))
+        && ("classSectionIds" in firestore.get(/databases/(default)/documents/schools/$(schoolId)/teacherAssignments/$(uid())).data)
+        ? firestore.get(/databases/(default)/documents/schools/$(schoolId)/teacherAssignments/$(uid())).data.classSectionIds
+        : [];
+    }
+
+    function teacherAssignedClassSection(schoolId, classSectionId) {
+      return isTeacher(schoolId) && teacherAssignmentIds(schoolId).hasAny([classSectionId]);
+    }
+
+    function parentHasClassSection(schoolId, classSectionId) {
+      return isParent(schoolId)
+        && ("childClassSectionIds" in userDoc(schoolId))
+        && userDoc(schoolId).childClassSectionIds.hasAny([classSectionId]);
+    }
+
+    function homeworkDoc(schoolId, yearId, homeworkId) {
+      return firestore.get(
+        /databases/(default)/documents/schools/$(schoolId)/academicYears/$(yearId)/homework/$(homeworkId)
+      ).data;
+    }
+
+    function homeworkExists(schoolId, yearId, homeworkId) {
+      return firestore.exists(
+        /databases/(default)/documents/schools/$(schoolId)/academicYears/$(yearId)/homework/$(homeworkId)
+      );
+    }
+
+    function homeworkClassSectionId(hw) {
+      return hw.class + '_' + hw.section;
+    }
+
+    // ------------------------------------------------------------------
+    // Homework attachments
+    // Path: schools/{schoolId}/academicYears/{yearId}/homework/{homeworkId}/{fileName}
+    // ------------------------------------------------------------------
+    match /schools/{schoolId}/academicYears/{yearId}/homework/{homeworkId}/{fileName} {
+
+      allow read: if signedIn() && (
+        isAdmin(schoolId)
+        || (
+          homeworkExists(schoolId, yearId, homeworkId)
+          && (
+            // Teacher: assigned to classSection
+            (isTeacher(schoolId) && teacherAssignedClassSection(schoolId, homeworkClassSectionId(homeworkDoc(schoolId, yearId, homeworkId))))
+            // Parent: only active + only their child's classSection
+            || (
+              isParent(schoolId)
+              && ("isActive" in homeworkDoc(schoolId, yearId, homeworkId))
+              && homeworkDoc(schoolId, yearId, homeworkId).isActive == true
+              && parentHasClassSection(schoolId, homeworkClassSectionId(homeworkDoc(schoolId, yearId, homeworkId)))
+            )
+          )
+        )
+      );
+
+      // Writes only after the homework doc exists, and only by creator teacher/admin.
+      allow write: if signedIn() && (
+        isAdmin(schoolId)
+        || (
+          homeworkExists(schoolId, yearId, homeworkId)
+          && isTeacher(schoolId)
+          && ("createdByUid" in homeworkDoc(schoolId, yearId, homeworkId))
+          && homeworkDoc(schoolId, yearId, homeworkId).createdByUid == uid()
+          && teacherAssignedClassSection(schoolId, homeworkClassSectionId(homeworkDoc(schoolId, yearId, homeworkId)))
+          && request.resource.size < 25 * 1024 * 1024
+          && (
+            request.resource.contentType.matches('^application/pdf$')
+            || request.resource.contentType.matches('^image/.*$')
+          )
+        )
+      );
+    }
+
+    // Default deny.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }

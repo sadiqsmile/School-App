@@ -85,11 +85,9 @@ class AdminDataService {
     required String yearId,
     String schoolId = AppConfig.schoolId,
   }) {
-    return _firestore
+    return schoolDoc(schoolId: schoolId)
         .collection('academicYears')
         .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
         .collection('classSections')
         .orderBy('label')
         .snapshots();
@@ -104,11 +102,9 @@ class AdminDataService {
   }) {
     final classSectionId = '${classId}_$sectionId';
 
-    return _firestore
+    return schoolDoc(schoolId: schoolId)
         .collection('academicYears')
         .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
         .collection('classSections')
         .doc(classSectionId)
         .set({
@@ -127,11 +123,9 @@ class AdminDataService {
     int? rollNo,
     required List<String> parentUids,
   }) {
-    return _firestore
+    return schoolDoc(schoolId: schoolId)
         .collection('academicYears')
         .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
         .collection('students')
         .doc(studentId)
         .set({

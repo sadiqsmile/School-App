@@ -17,10 +17,10 @@ class ParentDataService {
     required String schoolId,
   }) {
     return _firestore
-        .collection('academicYears')
-        .doc(yearId)
         .collection('schools')
         .doc(schoolId)
+        .collection('academicYears')
+        .doc(yearId)
         .collection('students');
   }
 
@@ -71,13 +71,13 @@ class ParentDataService {
     final end = DateTime(month.year, month.month + 1, 1);
 
     final attendanceRef = _firestore
-        .collection('academicYears')
-        .doc(yearId)
-        .collection('schools')
-        .doc(schoolId)
-        .collection('students')
-        .doc(studentId)
-        .collection('attendance');
+      .collection('schools')
+      .doc(schoolId)
+      .collection('academicYears')
+      .doc(yearId)
+      .collection('students')
+      .doc(studentId)
+      .collection('attendance');
 
     // Recommended: store `date` field as Timestamp for querying.
     final query = attendanceRef
