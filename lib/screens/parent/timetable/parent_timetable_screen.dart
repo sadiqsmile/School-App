@@ -40,7 +40,10 @@ class _ParentTimetableScreenState extends ConsumerState<ParentTimetableScreen> {
         }
 
         return Scaffold(
-          appBar: AppBar(title: const Text('Timetable')),
+          appBar: AppBar(
+            title: const Text('Timetable'),
+            elevation: 0,
+          ),
           body: yearAsync.when(
             loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
             error: (err, _) => Center(child: Text('Error: $err')),
@@ -61,12 +64,26 @@ class _ParentTimetableScreenState extends ConsumerState<ParentTimetableScreen> {
 
                   final children = childSnap.data ?? const <StudentBase>[];
                   if (children.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'No child linked to this parent yet.\n\nAsk admin to link students to your parent account (parents/{mobile}.children).',
-                          textAlign: TextAlign.center,
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.child_friendly, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No Linked Students',
+                              style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'No child linked to this parent yet.',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -102,53 +119,158 @@ class _ParentTimetableScreenState extends ConsumerState<ParentTimetableScreen> {
 
                       return Column(
                         children: [
+                          // Premium Gradient Header
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [
+                                  Theme.of(context).colorScheme.primary,
+                                  Theme.of(context).colorScheme.secondary,
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: SafeArea(
+                              top: false,
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Academic Year',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: Colors.white.withValues(alpha: 0.9),
+                                              ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          yearId,
+                                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: const Icon(Icons.schedule, color: Colors.white, size: 28),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          // Selection Card
                           Padding(
                             padding: const EdgeInsets.all(16),
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(16),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    DropdownButtonFormField<String>(
-                                      key: ValueKey('student-${_selectedStudentId ?? ''}'),
-                                      initialValue: _selectedStudentId,
-                                      decoration: const InputDecoration(
-                                        labelText: 'Student',
-                                        prefixIcon: Icon(Icons.badge_outlined),
-                                      ),
-                                      items: [
-                                        for (final c in children)
-                                          DropdownMenuItem(
-                                            value: c.id,
-                                            child: Text(c.fullName),
-                                          ),
-                                      ],
-                                      onChanged: (id) => setState(() => _selectedStudentId = id),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      'Year: $yearId',
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      'Group/Class/Section: ${groupId ?? '—'} • ${classId ?? '—'}-${sectionId ?? '—'}',
-                                      style: Theme.of(context).textTheme.bodySmall,
-                                    ),
-                                  ],
+                            child: Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.surfaceContainer,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.outlineVariant,
+                                  width: 0.5,
                                 ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.02),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  DropdownButtonFormField<String>(
+                                    key: ValueKey('student-${_selectedStudentId ?? ''}'),
+                                    initialValue: _selectedStudentId,
+                                    decoration: InputDecoration(
+                                      labelText: 'Student',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                      ),
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                      ),
+                                      filled: true,
+                                      fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                      prefixIcon: const Icon(Icons.badge_outlined),
+                                    ),
+                                    items: [
+                                      for (final c in children)
+                                        DropdownMenuItem(
+                                          value: c.id,
+                                          child: Text(c.fullName),
+                                        ),
+                                    ],
+                                    onChanged: (id) => setState(() => _selectedStudentId = id),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Group/Class/Section',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                                color: Theme.of(context).colorScheme.primary,
+                                              ),
+                                        ),
+                                        Text(
+                                          '${groupId ?? '—'} • ${classId ?? '—'}-${sectionId ?? '—'}',
+                                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                           Expanded(
                             child: (classId == null || classId.isEmpty || sectionId == null || sectionId.isEmpty || groupId == null || groupId.isEmpty)
-                                ? const Center(
+                                ? Center(
                                     child: Padding(
-                                      padding: EdgeInsets.all(16),
-                                      child: Text(
-                                        'This student does not have group/class/section set in schools/{schoolId}/students/{studentId}.\n\nTimetable needs Group + Class + Section.',
-                                        textAlign: TextAlign.center,
+                                      padding: const EdgeInsets.all(24),
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.info_outline, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            'Incomplete Profile',
+                                            style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            'This student does not have group, class, and section set.',
+                                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   )

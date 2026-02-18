@@ -29,11 +29,33 @@ class NotificationCenterScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Notifications'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Inbox', icon: Icon(Icons.inbox_outlined)),
-              Tab(text: 'Send', icon: Icon(Icons.edit_outlined)),
-            ],
+          elevation: 0,
+          flexibleSpace: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primary,
+                  Theme.of(context).colorScheme.secondary,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(60),
+            child: Material(
+              color: Colors.transparent,
+              child: TabBar(
+                tabs: const [
+                  Tab(text: 'Inbox', icon: Icon(Icons.inbox_outlined)),
+                  Tab(text: 'Send', icon: Icon(Icons.edit_outlined)),
+                ],
+                labelColor: Colors.white,
+                unselectedLabelColor: Colors.white.withValues(alpha: 0.6),
+                indicatorColor: Colors.white,
+              ),
+            ),
           ),
         ),
         body: TabBarView(

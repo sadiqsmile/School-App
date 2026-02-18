@@ -1,10 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../providers/core_providers.dart';
-import 'admin_parent_details_screen.dart';
-
 import '../../../widgets/loading_view.dart';
+import '../../../features/csv/parents_csv.dart';
+import '../../../utils/csv_saver.dart';
+import 'admin_parent_details_screen.dart';
+import 'admin_parents_csv_import_screen.dart';
+import 'admin_parent_approvals_screen.dart';
+
+enum _ParentCsvAction {
+  export,
+  import,
+}
 
 class AdminParentsScreen extends ConsumerStatefulWidget {
   const AdminParentsScreen({super.key});
@@ -18,6 +27,62 @@ class _AdminParentsScreenState extends ConsumerState<AdminParentsScreen> {
 
   void _open(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
+  }
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _exportParentsCsv() async {
+    try {
+      final rows = await ref.read(parentCsvImportServiceProvider).exportParentsForCsv();
+      final csvText = buildParentsCsv(parents: rows);
+
+      final now = DateTime.now();
+      final y = now.year.toString().padLeft(4, '0');
+      final m = now.month.toString().padLeft(2, '0');
+      final d = now.day.toString().padLeft(2, '0');
+      final fileName = 'parents_$y$m$d.csv';
+
+      await saveCsvText(fileName: fileName, csvText: csvText);
+
+      if (!mounted) return;
+      _snack('CSV exported');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Export failed: $e');
+    }
+  }
+
+  Future<void> _importParentsCsv() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+      );
+      if (res == null || res.files.isEmpty) return;
+      final f = res.files.first;
+      final bytes = f.bytes;
+      if (bytes == null) {
+        _snack('Could not read the selected file. Please try again.');
+        return;
+      }
+
+      final parsed = parseParentsCsvBytes(bytes: bytes);
+      if (!mounted) return;
+      final ok = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => AdminParentsCsvImportScreen(parseResult: parsed),
+        ),
+      );
+      if (!mounted) return;
+      if (ok == true) _snack('Import complete');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Import failed: $e');
+    }
   }
 
   Future<void> _createParentDialog() async {
@@ -105,6 +170,53 @@ class _AdminParentsScreenState extends ConsumerState<AdminParentsScreen> {
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const AdminParentApprovalsScreen(),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.how_to_reg),
+                label: const Text('Approvals'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange.shade600,
+                ),
+              ),
+              const SizedBox(width: 8),
+              PopupMenuButton<_ParentCsvAction>(
+                tooltip: 'CSV actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case _ParentCsvAction.export:
+                      _exportParentsCsv();
+                      break;
+                    case _ParentCsvAction.import:
+                      _importParentsCsv();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _ParentCsvAction.export,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.download_outlined),
+                      title: Text('Export CSV'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _ParentCsvAction.import,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.upload_file_outlined),
+                      title: Text('Import CSV'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: _creating ? null : _createParentDialog,
                 icon: const Icon(Icons.add),

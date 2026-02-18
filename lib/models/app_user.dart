@@ -9,6 +9,10 @@ class AppUser {
     required this.email,
     required this.phone,
     this.assignedGroups = const <String>[],
+    // Student-specific fields
+    this.classId,
+    this.sectionId,
+    this.groupId,
   });
 
   final String uid;
@@ -18,6 +22,11 @@ class AppUser {
   final String? email;
   final String? phone;
   final List<String> assignedGroups;
+  
+  // Student-specific fields
+  final String? classId;
+  final String? sectionId;
+  final String? groupId;
 
   factory AppUser.fromMap({
     required String uid,
@@ -40,6 +49,10 @@ class AppUser {
       email: map['email'] as String?,
       phone: map['phone'] as String?,
       assignedGroups: groups,
+      // Student-specific fields
+      classId: map['classId'] as String?,
+      sectionId: map['sectionId'] as String?,
+      groupId: map['groupId'] as String?,
     );
   }
 }

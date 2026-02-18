@@ -30,13 +30,6 @@ class _AdminTimetableScreenState extends ConsumerState<AdminTimetableScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void _resetEdits() {
-    setState(() {
-      _dirty = false;
-      _editedDays = parseDays(null);
-    });
-  }
-
   Future<void> _save({required String yearId, required Map<String, List<TimetablePeriod>> days}) async {
     if (_groupId == null || _classId == null || _sectionId == null) return;
 
@@ -78,51 +71,117 @@ class _AdminTimetableScreenState extends ConsumerState<AdminTimetableScreen> {
       loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
       error: (err, _) => Center(child: Text('Error: $err')),
       data: (yearId) {
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Timetable',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                    ),
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Timetable'),
+            elevation: 0,
+          ),
+          body: Column(
+            children: [
+              // Premium Gradient Header
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      Theme.of(context).colorScheme.primary,
+                      Theme.of(context).colorScheme.secondary,
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                   ),
-                  Text(
-                    'Year: $yearId',
-                    style: Theme.of(context).textTheme.bodySmall,
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Academic Year',
+                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              yearId,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.schedule, color: Colors.white, size: 28),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 12),
-                  OutlinedButton.icon(
-                    onPressed: (!_dirty || _saving) ? null : _resetEdits,
-                    icon: const Icon(Icons.restart_alt_outlined),
-                    label: const Text('Reset'),
-                  ),
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-              child: Card(
-                child: Padding(
+              // Selection Card with Modern Styling
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Container(
                   padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainer,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      width: 0.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.02),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Text(
+                        'Select Group, Class & Section',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 16),
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
                         children: [
                           SizedBox(
-                            width: 260,
+                            width: 240,
                             child: DropdownButtonFormField<String>(
                               key: ValueKey('group-${_groupId ?? ''}'),
                               initialValue: _groupId,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Group',
-                                prefixIcon: Icon(Icons.groups_2_outlined),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                prefixIcon: const Icon(Icons.groups_2_outlined),
                               ),
                               items: [
                                 for (final g in _groups)
@@ -148,13 +207,27 @@ class _AdminTimetableScreenState extends ConsumerState<AdminTimetableScreen> {
                               final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
 
                               return SizedBox(
-                                width: 260,
+                                width: 240,
                                 child: DropdownButtonFormField<String>(
                                   key: ValueKey('class-${selected ?? ''}'),
                                   initialValue: selected,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Class',
-                                    prefixIcon: Icon(Icons.class_outlined),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                    prefixIcon: const Icon(Icons.class_outlined),
                                   ),
                                   items: [
                                     for (final d in docs)
@@ -182,13 +255,27 @@ class _AdminTimetableScreenState extends ConsumerState<AdminTimetableScreen> {
                               final selected = (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
 
                               return SizedBox(
-                                width: 260,
+                                width: 240,
                                 child: DropdownButtonFormField<String>(
                                   key: ValueKey('section-${selected ?? ''}'),
                                   initialValue: selected,
-                                  decoration: const InputDecoration(
+                                  decoration: InputDecoration(
                                     labelText: 'Section',
-                                    prefixIcon: Icon(Icons.segment_outlined),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                    prefixIcon: const Icon(Icons.segment_outlined),
                                   ),
                                   items: [
                                     for (final d in docs)
@@ -211,39 +298,70 @@ class _AdminTimetableScreenState extends ConsumerState<AdminTimetableScreen> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      Text(
-                        'Tip: Use the Save button below the tabs after editing periods.',
-                        style: Theme.of(context).textTheme.bodySmall,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'Tip: Use the Save button below the tabs after editing periods.',
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                        ),
                       ),
                     ],
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: (_groupId == null || _classId == null || _sectionId == null)
-                  ? const Center(child: Text('Pick a Group, Class, and Section above.'))
-                  : _TimetableEditorBody(
-                      yearId: yearId,
-                      groupId: _groupId!,
-                      classId: _classId!,
-                      sectionId: _sectionId!,
-                      dirty: _dirty,
-                      editedDays: _editedDays,
-                      saving: _saving,
-                      onEdit: (nextDays) {
-                        setState(() {
-                          _dirty = true;
-                          _editedDays = nextDays;
-                        });
-                      },
-                      onSave: (serverDays) {
-                        final toSave = _dirty ? _editedDays : serverDays;
-                        return _save(yearId: yearId, days: toSave);
-                      },
-                    ),
-            ),
-          ],
+              Expanded(
+                child: (_groupId == null || _classId == null || _sectionId == null)
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.schedule, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Select Timetable',
+                                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Pick a group, class, and section to edit.',
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    : _TimetableEditorBody(
+                        yearId: yearId,
+                        groupId: _groupId!,
+                        classId: _classId!,
+                        sectionId: _sectionId!,
+                        dirty: _dirty,
+                        editedDays: _editedDays,
+                        saving: _saving,
+                        onEdit: (nextDays) {
+                          setState(() {
+                            _dirty = true;
+                            _editedDays = nextDays;
+                          });
+                        },
+                        onSave: (serverDays) {
+                          final toSave = _dirty ? _editedDays : serverDays;
+                          return _save(yearId: yearId, days: toSave);
+                        },
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );

@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 
 import 'router/app_router.dart';
 import 'providers/core_providers.dart';
+import 'theme/app_theme.dart';
 
 class SchoolApp extends ConsumerWidget {
   const SchoolApp({super.key});
@@ -21,10 +22,7 @@ class SchoolApp extends ConsumerWidget {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       title: 'School App',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorSchemeSeed: Colors.blue,
-      ),
+      theme: AppTheme.lightTheme(),
       routerConfig: router,
     );
   }

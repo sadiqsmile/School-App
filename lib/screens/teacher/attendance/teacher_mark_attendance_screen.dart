@@ -134,7 +134,8 @@ class _TeacherMarkAttendanceScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Attendance • ${widget.classId}-${widget.sectionId}'),
+        title: Text('${widget.classId} • ${widget.sectionId}'),
+        elevation: 0,
       ),
       body: StreamBuilder<List<StudentBase>>(
         stream: studentsStream,
@@ -150,12 +151,18 @@ class _TeacherMarkAttendanceScreenState
 
           final students = studentsSnap.data ?? const <StudentBase>[];
           if (students.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'No students found for this class/section.\n\nAsk admin to add students and set their class/section.',
-                  textAlign: TextAlign.center,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.people_outline, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                    const SizedBox(height: 16),
+                    Text('No Students', style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    const SizedBox(height: 8),
+                    Text('No students found for this class/section.', style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey), textAlign: TextAlign.center),
+                  ],
                 ),
               ),
             );
@@ -165,9 +172,7 @@ class _TeacherMarkAttendanceScreenState
             stream: summaryStream,
             builder: (context, daySnap) {
               if (daySnap.connectionState == ConnectionState.waiting) {
-                return const Center(
-                  child: LoadingView(message: 'Loading attendance…'),
-                );
+                return const Center(child: LoadingView(message: 'Loading attendance…'));
               }
               if (daySnap.hasError) {
                 return Center(child: Text('Error: ${daySnap.error}'));
@@ -190,163 +195,165 @@ class _TeacherMarkAttendanceScreenState
               final total = students.length;
               final presentCount = _present.values.where((v) => v).length;
               final absentCount = total - presentCount;
-
-                  final markedBy = data == null
-                    ? null
-                    : (data['markedByUid'] as String?) ??
-                      (data['markedByTeacherUid'] as String?);
-              final markedInfo = exists && markedBy != null
-                  ? 'Marked by: $markedBy'
-                  : null;
+              final markedBy = data == null ? null : (data['markedByUid'] as String?) ?? (data['markedByTeacherUid'] as String?);
 
               return Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Date: $dateText',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleMedium
-                                        ?.copyWith(fontWeight: FontWeight.w800),
-                                  ),
-                                  if (markedInfo != null) ...[
-                                    const SizedBox(height: 4),
+                  // Premium Gradient Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
                                     Text(
-                                      markedInfo,
-                                      style: Theme.of(
-                                        context,
-                                      ).textTheme.bodySmall,
+                                      dateText,
+                                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                            color: Colors.white.withValues(alpha: 0.9),
+                                            fontWeight: FontWeight.w500,
+                                          ),
                                     ),
-                                  ],
-                                  const SizedBox(height: 8),
-                                  Wrap(
-                                    spacing: 10,
-                                    runSpacing: 6,
-                                    children: [
-                                      _CountChip(
-                                        label: 'Total',
-                                        value: total.toString(),
-                                      ),
-                                      _CountChip(
-                                        label: 'Present',
-                                        value: presentCount.toString(),
-                                      ),
-                                      _CountChip(
-                                        label: 'Absent',
-                                        value: absentCount.toString(),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      '${widget.classId} • ${widget.sectionId}',
+                                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                    ),
+                                    if (exists && markedBy != null) ...[
+                                      const SizedBox(height: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          'Marked by: $markedBy',
+                                          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.white),
+                                        ),
                                       ),
                                     ],
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            FilledButton.icon(
-                              onPressed: _saving
-                                  ? null
-                                  : () async {
-                                      if (exists) {
-                                        final ok = await showDialog<bool>(
-                                          context: context,
-                                          builder: (_) => AlertDialog(
-                                            title: const Text(
-                                              'Overwrite attendance?',
-                                            ),
-                                            content: Text(
-                                              'Attendance is already marked for $dateText (${widget.classId}-${widget.sectionId}).\n\nDo you want to overwrite it?',
-                                            ),
-                                            actions: [
-                                              TextButton(
-                                                onPressed: () => Navigator.of(
-                                                  context,
-                                                ).pop(false),
-                                                child: const Text('Cancel'),
-                                              ),
-                                              FilledButton(
-                                                onPressed: () => Navigator.of(
-                                                  context,
-                                                ).pop(true),
-                                                child: const Text('Overwrite'),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                        if (ok != true) return;
-                                        await _save(
-                                          overwriteIfExists: true,
-                                          students: students,
-                                        );
-                                      } else {
-                                        await _save(
-                                          overwriteIfExists: false,
-                                          students: students,
-                                        );
-                                      }
-                                    },
-                              icon: _saving
-                                  ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Icon(Icons.save_outlined),
-                              label: const Text('Save'),
-                            ),
-                          ],
-                        ),
+                              const SizedBox(width: 12),
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.assignment, color: Colors.white, size: 28),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          // Stats Pills
+                          Row(
+                            children: [
+                              _buildStatPill(context, 'Total', total.toString(), Colors.white),
+                              const SizedBox(width: 12),
+                              _buildStatPill(context, 'Present', presentCount.toString(), Colors.green.shade100),
+                              const SizedBox(width: 12),
+                              _buildStatPill(context, 'Absent', absentCount.toString(), Colors.red.shade100),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ),
+
+                  // Student List
                   Expanded(
                     child: ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 100),
                       itemCount: students.length,
                       itemBuilder: (context, index) {
                         final s = students[index];
                         final isPresent = _present[s.id] ?? true;
 
-                        return Card(
-                          child: ListTile(
-                            title: Text(
-                              s.fullName,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w700),
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 280),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isPresent
+                                  ? Colors.green.withValues(alpha: 0.08)
+                                  : Colors.red.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(
+                                color: isPresent
+                                    ? Colors.green.withValues(alpha: 0.3)
+                                    : Colors.red.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
                             ),
-                            subtitle: Text(
-                              'Admission: ${s.admissionNo ?? '-'}',
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
+                            child: Row(
                               children: [
-                                Text(
-                                  isPresent ? 'P' : 'A',
-                                  style: Theme.of(context).textTheme.titleSmall
-                                      ?.copyWith(fontWeight: FontWeight.w900),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        s.fullName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Adm: ${s.admissionNo ?? '-'}',
+                                        style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                                const SizedBox(width: 8),
-                                Switch.adaptive(
-                                  value: isPresent,
-                                  onChanged: _saving
+                                const SizedBox(width: 12),
+                                InkWell(
+                                  onTap: _saving
                                       ? null
-                                      : (v) {
+                                      : () {
                                           setState(() {
-                                            _present[s.id] = v;
+                                            _present[s.id] = !isPresent;
                                           });
                                         },
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: isPresent
+                                          ? Theme.of(context).colorScheme.primary
+                                          : Colors.red,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      isPresent ? 'Present' : 'Absent',
+                                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -361,21 +368,134 @@ class _TeacherMarkAttendanceScreenState
           );
         },
       ),
+      // Sticky Bottom Bar
+      bottomSheet: SafeArea(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                width: 0.5,
+              ),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                blurRadius: 12,
+                offset: const Offset(0, -2),
+              ),
+            ],
+          ),
+          child: DefaultTextStyle(
+            style: Theme.of(context).textTheme.bodyMedium ?? const TextStyle(),
+            child: StreamBuilder<List<StudentBase>>(
+              stream: studentsStream,
+              builder: (context, studentsSnap) {
+                final students = studentsSnap.data ?? const <StudentBase>[];
+                if (students.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                final total = students.length;
+                final presentCount = _present.values.where((v) => v).length;
+                final absentCount = total - presentCount;
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Present', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey)),
+                                Text(presentCount.toString(), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Absent', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: Colors.grey)),
+                                Text(absentCount.toString(), style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    FilledButton.icon(
+                      onPressed: _saving
+                          ? null
+                          : () async {
+                              final students = studentsSnap.data ?? const <StudentBase>[];
+                              if (students.isEmpty) return;
+                              await _save(
+                                overwriteIfExists: true,
+                                students: students,
+                              );
+                            },
+                      icon: _saving
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation(Colors.white)),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: const Text('Save'),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
-}
 
-class _CountChip extends StatelessWidget {
-  const _CountChip({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Chip(
-      label: Text('$label: $value'),
-      visualDensity: VisualDensity.compact,
+  Widget _buildStatPill(BuildContext context, String label, String value, Color bgColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+          ),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+          ),
+        ],
+      ),
     );
   }
 }

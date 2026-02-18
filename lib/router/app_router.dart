@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../providers/auth_providers.dart';
 import '../models/user_role.dart';
@@ -8,7 +9,12 @@ import '../screens/auth/unified_login_screen.dart';
 import '../screens/dashboards/admin_dashboard.dart';
 import '../screens/dashboards/parent_dashboard.dart';
 import '../screens/dashboards/teacher_dashboard.dart';
+import '../screens/dashboards/student_dashboard.dart';
 import '../screens/splash/splash_screen.dart';
+import '../screens/parent/auth/parent_awaiting_approval_screen.dart';
+import '../screens/parent/auth/parent_force_password_change_screen.dart';
+import '../config/app_config.dart';
+import '../utils/parent_auth_email.dart';
 
 final goRouterProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(firebaseAuthUserProvider);
@@ -18,6 +24,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     initialLocation: '/',
     redirect: (context, state) async {
       final isLoggingIn = state.matchedLocation.startsWith('/login');
+      final isParentAuthFlow = state.matchedLocation.startsWith('/parent-auth');
 
       if (authState.isLoading) {
         return null;
@@ -30,6 +37,55 @@ final goRouterProvider = Provider<GoRouter>((ref) {
 
       if (isLoggingIn) {
         return '/';
+      }
+
+      // For parents, check approval status before proceeding to dashboard
+      if (user.email != null && user.email!.contains('@parents.hongirana.school')) {
+        final mobile = tryExtractMobileFromParentEmail(user.email ?? '');
+        if (mobile != null) {
+          try {
+            final firestore = FirebaseFirestore.instance;
+            final parentDoc = await firestore
+                .collection('schools')
+                .doc(AppConfig.schoolId)
+                .collection('parents')
+                .doc(mobile)
+                .get();
+
+            if (parentDoc.exists) {
+              final data = parentDoc.data() ?? const <String, dynamic>{};
+              final approvalStatus = (data['approvalStatus'] as String?)?.trim() ?? 'pending';
+              final mustChangePassword = (data['mustChangePassword'] as bool?) ?? false;
+
+              // If pending approval, redirect to waiting screen
+              if (approvalStatus == 'pending') {
+                if (isParentAuthFlow) {
+                  return null;
+                }
+                return '/parent-auth/awaiting-approval';
+              }
+
+              // If blocked, sign out and redirect to login
+              if (approvalStatus == 'blocked' || approvalStatus == 'rejected') {
+                await FirebaseAuth.instance.signOut();
+                return '/login';
+              }
+
+              // If must change password, redirect to password change screen
+              if (mustChangePassword) {
+                if (state.matchedLocation == '/parent-auth/force-password-change') {
+                  return null;
+                }
+                if (isParentAuthFlow) {
+                  return null;
+                }
+                return '/parent-auth/force-password-change';
+              }
+            }
+          } catch (e) {
+            // Log error but don't block access
+          }
+        }
       }
 
       // If role profile hasn't loaded yet, let the SplashScreen handle loading/error UI.
@@ -46,6 +102,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         UserRole.parent => '/parent',
         UserRole.teacher => '/teacher',
         UserRole.admin => '/admin',
+        UserRole.student => '/student',
       };
 
       // Keep users inside their dashboard namespace.
@@ -83,6 +140,20 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           ),
         ],
       ),
+      // Parent authentication flow screens
+      GoRoute(
+        path: '/parent-auth',
+        routes: [
+          GoRoute(
+            path: 'awaiting-approval',
+            builder: (context, state) => const ParentAwaitingApprovalScreen(),
+          ),
+          GoRoute(
+            path: 'force-password-change',
+            builder: (context, state) => const ParentForcePasswordChangeScreen(),
+          ),
+        ],
+      ),
       GoRoute(
         path: '/parent',
         builder: (context, state) => const ParentDashboard(),
@@ -94,6 +165,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin',
         builder: (context, state) => const AdminDashboard(),
+      ),
+      GoRoute(
+        path: '/student',
+        builder: (context, state) => const StudentDashboard(),
       ),
     ],
   );

@@ -37,7 +37,10 @@ class _TeacherTimetableScreenState extends ConsumerState<TeacherTimetableScreen>
     final sectionsStream = adminData.watchSections();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Timetable')),
+      appBar: AppBar(
+        title: const Text('Timetable'),
+        elevation: 0,
+      ),
       body: appUserAsync.when(
         loading: () => const Center(child: LoadingView(message: 'Loading profile…')),
         error: (err, _) => Center(child: Text('Error: $err')),
@@ -63,102 +66,226 @@ class _TeacherTimetableScreenState extends ConsumerState<TeacherTimetableScreen>
             data: (yearId) {
               return Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Wrap(
-                          spacing: 12,
-                          runSpacing: 12,
-                          children: [
-                            SizedBox(
-                              width: 260,
-                              child: DropdownButtonFormField<String>(
-                                key: ValueKey('group-${_groupId ?? ''}'),
-                                initialValue: allowedGroups.contains(_groupId) ? _groupId : null,
-                                decoration: const InputDecoration(
-                                  labelText: 'Group',
-                                  prefixIcon: Icon(Icons.groups_2_outlined),
+                  // Premium Gradient Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Theme.of(context).colorScheme.primary,
+                          Theme.of(context).colorScheme.secondary,
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Academic Year',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                        color: Colors.white.withValues(alpha: 0.9),
+                                      ),
                                 ),
-                                items: [
-                                  for (final g in allowedGroups)
-                                    DropdownMenuItem(
-                                      value: g,
-                                      child: Text(g),
-                                    ),
-                                ],
-                                onChanged: (v) => setState(() => _groupId = v),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  yearId,
+                                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ],
                             ),
-                            StreamBuilder(
-                              stream: classesStream,
-                              builder: (context, snap) {
-                                final docs = snap.data?.docs ?? const [];
-                                final ids = docs.map((d) => d.id).toSet();
-                                final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
-
-                                return SizedBox(
-                                  width: 260,
-                                  child: DropdownButtonFormField<String>(
-                                    key: ValueKey('class-${selected ?? ''}'),
-                                    initialValue: selected,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Class',
-                                      prefixIcon: Icon(Icons.class_outlined),
-                                    ),
-                                    items: [
-                                      for (final d in docs)
-                                        DropdownMenuItem(
-                                          value: d.id,
-                                          child: Text((d.data()['name'] as String?) ?? d.id),
-                                        ),
-                                    ],
-                                    onChanged: (v) => setState(() => _classId = v),
-                                  ),
-                                );
-                              },
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            StreamBuilder(
-                              stream: sectionsStream,
-                              builder: (context, snap) {
-                                final docs = snap.data?.docs ?? const [];
-                                final ids = docs.map((d) => d.id).toSet();
-                                final selected = (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
-
-                                return SizedBox(
-                                  width: 260,
-                                  child: DropdownButtonFormField<String>(
-                                    key: ValueKey('section-${selected ?? ''}'),
-                                    initialValue: selected,
-                                    decoration: const InputDecoration(
-                                      labelText: 'Section',
-                                      prefixIcon: Icon(Icons.segment_outlined),
-                                    ),
-                                    items: [
-                                      for (final d in docs)
-                                        DropdownMenuItem(
-                                          value: d.id,
-                                          child: Text((d.data()['name'] as String?) ?? d.id),
-                                        ),
-                                    ],
-                                    onChanged: (v) => setState(() => _sectionId = v),
-                                  ),
-                                );
-                              },
-                            ),
-                            Text(
-                              'Year: $yearId',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
+                            child: const Icon(Icons.schedule, color: Colors.white, size: 28),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // Selection Card
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceContainer,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                          width: 0.5,
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: 240,
+                            child: DropdownButtonFormField<String>(
+                              key: ValueKey('group-${_groupId ?? ''}'),
+                              initialValue: allowedGroups.contains(_groupId) ? _groupId : null,
+                              decoration: InputDecoration(
+                                labelText: 'Group',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                ),
+                                filled: true,
+                                fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                prefixIcon: const Icon(Icons.groups_2_outlined),
+                              ),
+                              items: [
+                                for (final g in allowedGroups)
+                                  DropdownMenuItem(
+                                    value: g,
+                                    child: Text(g),
+                                  ),
+                              ],
+                              onChanged: (v) => setState(() => _groupId = v),
+                            ),
+                          ),
+                          StreamBuilder(
+                            stream: classesStream,
+                            builder: (context, snap) {
+                              final docs = snap.data?.docs ?? const [];
+                              final ids = docs.map((d) => d.id).toSet();
+                              final selected = (_classId != null && ids.contains(_classId)) ? _classId : null;
+
+                              return SizedBox(
+                                width: 240,
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey('class-${selected ?? ''}'),
+                                  initialValue: selected,
+                                  decoration: InputDecoration(
+                                    labelText: 'Class',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                    prefixIcon: const Icon(Icons.class_outlined),
+                                  ),
+                                  items: [
+                                    for (final d in docs)
+                                      DropdownMenuItem(
+                                        value: d.id,
+                                        child: Text((d.data()['name'] as String?) ?? d.id),
+                                      ),
+                                  ],
+                                  onChanged: (v) => setState(() => _classId = v),
+                                ),
+                              );
+                            },
+                          ),
+                          StreamBuilder(
+                            stream: sectionsStream,
+                            builder: (context, snap) {
+                              final docs = snap.data?.docs ?? const [];
+                              final ids = docs.map((d) => d.id).toSet();
+                              final selected = (_sectionId != null && ids.contains(_sectionId)) ? _sectionId : null;
+
+                              return SizedBox(
+                                width: 240,
+                                child: DropdownButtonFormField<String>(
+                                  key: ValueKey('section-${selected ?? ''}'),
+                                  initialValue: selected,
+                                  decoration: InputDecoration(
+                                    labelText: 'Section',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(color: Theme.of(context).colorScheme.primary, width: 2),
+                                    ),
+                                    filled: true,
+                                    fillColor: Theme.of(context).colorScheme.surfaceContainer,
+                                    prefixIcon: const Icon(Icons.segment_outlined),
+                                  ),
+                                  items: [
+                                    for (final d in docs)
+                                      DropdownMenuItem(
+                                        value: d.id,
+                                        child: Text((d.data()['name'] as String?) ?? d.id),
+                                      ),
+                                  ],
+                                  onChanged: (v) => setState(() => _sectionId = v),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ),
                   ),
                   Expanded(
                     child: (_groupId == null || _classId == null || _sectionId == null)
-                        ? const Center(child: Text('Select Group, Class, and Section to view timetable.'))
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.schedule, size: 64, color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'Select Timetable',
+                                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'Pick a group, class, and section to view.',
+                                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                                    textAlign: TextAlign.center,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
                         : _TeacherTimetableBody(
                             yearId: yearId,
                             groupId: _groupId!,

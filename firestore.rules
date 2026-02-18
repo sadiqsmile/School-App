@@ -184,8 +184,35 @@ service cloud.firestore {
         // Admin manages parent docs.
         allow create, delete: if isAdmin(schoolId);
 
-        // Parent can update their own doc (authUid linking, lockout counters, etc).
-        allow update: if isAdmin(schoolId) || isSameParentMobile(mobile);
+        // Parent can update their own doc, but only non-sensitive fields
+        // Protected fields (can only be modified by admin): 
+        //   - approvalStatus (pending/approved/rejected/blocked)
+        //   - mustChangePassword
+        //   - isActive
+        //   - firstLoginAt, lastLoginAt, approvedAt, etc.
+        allow update: if isAdmin(schoolId) || (
+          isSameParentMobile(mobile)
+          && onlyChangesKeys([
+            'failedAttempts',
+            'lockUntil',
+            'updatedAt'
+          ])
+        );
+      }
+
+      // ---- Parent Login Requests (approval workflow) ----
+      match /parentLoginRequests/{mobile} {
+        // Admin can read all pending login requests
+        allow read: if isAdmin(schoolId);
+
+        // Admin creates/updates login requests with approval decisions
+        allow create, update: if isAdmin(schoolId);
+
+        // Parent can check their own login request status
+        allow read: if isSameParentMobile(mobile);
+
+        // Disallow parent deletes
+        allow delete: if isAdmin(schoolId);
       }
 
       match /students/{studentId} {
@@ -342,15 +369,64 @@ service cloud.firestore {
               || (isTeacher(schoolId) && teacherAssignedToClassSection(schoolId, resource.data['class'], resource.data['section']))
               || (isParent(schoolId) && isParentOfStudent(schoolId, studentId) && resource.data.isPublished == true);
 
-            allow create, update: if isAdmin(schoolId)
-              || (
-                isTeacher(schoolId)
-                && teacherAssignedToClassSection(schoolId, request.resource.data['class'], request.resource.data['section'])
-                && request.resource.data.enteredByTeacherUid == uid()
-              );
+            // Teachers can create/update results for their assigned class-section
+            // Only allowed to set entered fields, not approval/publish fields
+            allow create, update: if (isTeacher(schoolId)
+              && teacherAssignedToClassSection(schoolId, request.resource.data['class'], request.resource.data['section'])
+              && request.resource.data.enteredByUid == uid()
+              // Teacher can only modify: enteredByUid, enteredAt, subjects, total, percentage, grade, updatedAt
+              && (!('isApproved' in request.resource.data) || request.resource.data.isApproved == (resource == null ? false : resource.data.isApproved))
+              && (!('approvedByUid' in request.resource.data) || request.resource.data.approvedByUid == (resource == null ? null : resource.data.approvedByUid))
+              && (!('approvedAt' in request.resource.data) || request.resource.data.approvedAt == (resource == null ? null : resource.data.approvedAt))
+              && (!('isPublished' in request.resource.data) || request.resource.data.isPublished == (resource == null ? false : resource.data.isPublished))
+              && (!('publishedByUid' in request.resource.data) || request.resource.data.publishedByUid == (resource == null ? null : resource.data.publishedByUid))
+              && (!('publishedAt' in request.resource.data) || request.resource.data.publishedAt == (resource == null ? null : resource.data.publishedAt))
+            )
+            // Admin can create/update and set approval/publish fields
+            || (isAdmin(schoolId));
 
             allow delete: if isAdmin(schoolId);
           }
+        }
+
+        // ------------------------------------------------------------------
+        // Exam Marks Results (new system)
+        // schools/{schoolId}/academicYears/{yearId}/exams/{examId}/marksResults/{studentId}
+        // ------------------------------------------------------------------
+        match /exams/{examId}/marksResults/{studentId} {
+          function canReadMarksResult() {
+            return isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherAssignedToClassSection(schoolId, resource.data['classId'], resource.data['sectionId']))
+              || (isParent(schoolId) && isParentOfStudent(schoolId, studentId));
+          }
+
+          function canWriteMarksResult() {
+            return isAdmin(schoolId)
+              || (isTeacher(schoolId) && teacherAssignedToClassSection(schoolId, request.resource.data['classId'], request.resource.data['sectionId']));
+          }
+
+          allow read: if canReadMarksResult();
+
+          // Admin can create/update all marks
+          allow create, update: if isAdmin(schoolId);
+
+          // Teacher can only update their subject marks
+          // They cannot modify other subjects or metadata
+          allow update: if isTeacher(schoolId)
+            && teacherAssignedToClassSection(schoolId, resource.data['classId'], resource.data['sectionId'])
+            && request.resource.data.studentId == resource.data.studentId
+            && request.resource.data.updatedByUid == uid()
+            // Preserve non-subject data
+            && request.resource.data.examId == resource.data.examId
+            && request.resource.data.examName == resource.data.examName
+            && request.resource.data.name == resource.data.name
+            && request.resource.data.classId == resource.data.classId
+            && request.resource.data.sectionId == resource.data.sectionId
+            && request.resource.data.groupId == resource.data.groupId
+            && request.resource.data.admissionNo == resource.data.admissionNo;
+
+          allow delete: if isAdmin(schoolId);
+        }
         }
       }
     }

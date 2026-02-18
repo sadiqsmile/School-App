@@ -42,19 +42,13 @@ class ParentDashboard extends ConsumerWidget {
       );
     }
 
-      final scheme = Theme.of(context).colorScheme;
-      final width = MediaQuery.sizeOf(context).width;
-      final crossAxisCount = width >= 900
+    final scheme = Theme.of(context).colorScheme;
+    final width = MediaQuery.sizeOf(context).width;
+    final crossAxisCount = width >= 900
         ? 3
         : width >= 560
-          ? 2
-          : 1;
-
-    final yearText = yearAsync.when(
-      data: (yearId) => 'Academic Year: $yearId',
-      loading: () => 'Academic Year: …',
-      error: (_, _) => 'Academic Year: (not set)',
-    );
+            ? 2
+            : 1;
 
     final yearId = yearAsync.asData?.value;
 
@@ -83,117 +77,224 @@ class ParentDashboard extends ConsumerWidget {
                   // vapidKey: 'YOUR_WEB_PUSH_VAPID_KEY',
                 ),
               ),
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverToBoxAdapter(
-                      child: DashboardHeaderCard(
-                        title: 'Hello',
-                        subtitle: '$yearText\nMobile: $parentMobile\nRole: parent',
-                        trailing: Icon(Icons.verified_user_outlined, color: scheme.primary),
-                      ),
+              // Premium Gradient Header
+              SliverToBoxAdapter(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [scheme.primary, scheme.secondary],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    sliver: SliverToBoxAdapter(
-                      child: _ParentSummaryRow(
-                        yearId: yearId,
-                        // During migration, many year-student docs still contain legacy
-                        // parent mobile numbers in `parentUids`.
-                        parentUid: parentMobile,
-                        roleLabel: 'parent',
-                      ),
-                    ),
-                  ),
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                    sliver: SliverGrid.count(
-                      crossAxisCount: crossAxisCount,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: crossAxisCount == 1 ? 2.6 : 1.25,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        DashboardActionCard(
-                          title: 'Student Profile',
-                          subtitle: 'Name, class, section, photo, admission no',
-                          icon: Icons.badge_outlined,
-                          tint: scheme.primary,
-                          animationOrder: 0,
-                          onTap: () => _open(context, const StudentListScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Attendance',
-                          subtitle: 'Monthly calendar + percentage',
-                          icon: Icons.event_available_outlined,
-                          tint: scheme.secondary,
-                          animationOrder: 1,
-                          onTap: () => _open(context, const ParentAttendanceScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Homework / Notes',
-                          subtitle: 'Download PDFs/images',
-                          icon: Icons.menu_book_outlined,
-                          tint: const Color(0xFF2E7D32),
-                          animationOrder: 2,
-                          onTap: () => _open(context, const ParentHomeworkListScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Chat with Teachers',
-                          subtitle: 'WhatsApp subject-wise',
-                          icon: Icons.chat_bubble_outline,
-                          tint: const Color(0xFF00796B),
-                          animationOrder: 3,
-                          onTap: () => _open(context, const ParentChatTeachersScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Timetable',
-                          subtitle: 'Class timetable',
-                          icon: Icons.calendar_month_outlined,
-                          tint: const Color(0xFF1565C0),
-                          animationOrder: 4,
-                          onTap: () => _open(context, const ParentTimetableScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Exam Results',
-                          subtitle: 'Marks and grade',
-                          icon: Icons.workspace_premium_outlined,
-                          tint: const Color(0xFF6A1B9A),
-                          animationOrder: 5,
-                          onTap: () => _open(context, const ParentExamsScreen()),
-                        ),
-                        DashboardActionCard(
-                          title: 'Notifications',
-                          subtitle: 'School and class updates',
-                          icon: Icons.notifications_active_outlined,
-                          tint: const Color(0xFF00838F),
-                          animationOrder: 6,
-                          onTap: () => _open(
-                            context,
-                            NotificationInboxScreen(
-                              viewerRole: UserRole.parent,
-                              parentMobile: parentMobile,
+                        Row(
+                          children: [
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white.withValues(alpha: 0.25),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+                              ),
+                              child: Icon(Icons.family_restroom, color: Colors.white, size: 28),
                             ),
-                          ),
-                        ),
-                        DashboardActionCard(
-                          title: 'Settings',
-                          subtitle: 'Change password, sign out',
-                          icon: Icons.settings_outlined,
-                          tint: const Color(0xFF37474F),
-                          animationOrder: 7,
-                          onTap: () => _open(context, const ParentSettingsScreen()),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Hello!',
+                                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                      letterSpacing: -0.5,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Parent Portal',
+                                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                ],
+                ),
+              ),
+              // Children as Horizontal Cards (Swipeable)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                sliver: SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Your Children',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 160,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            _ChildCard(
+                              name: 'Arjun',
+                              class_: 'Primary - A',
+                              section: 'Section A',
+                              grade: 'Primary',
+                              color: const Color(0xFF42A5F5),
+                            ),
+                            const SizedBox(width: 12),
+                            _ChildCard(
+                              name: 'Ananya',
+                              class_: 'Middle - B',
+                              section: 'Section B',
+                              grade: 'Middle',
+                              color: const Color(0xFF66BB6A),
+                            ),
+                            const SizedBox(width: 12),
+                            _ChildCard(
+                              name: 'Aditya',
+                              class_: 'High - C',
+                              section: 'Section C',
+                              grade: 'High',
+                              color: const Color(0xFFFFA726),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Quick Stats
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                sliver: SliverToBoxAdapter(
+                  child: _ParentSummaryRow(
+                    yearId: yearId,
+                    parentUid: parentMobile,
+                    roleLabel: 'parent',
+                  ),
+                ),
+              ),
+              // Quick Actions Title
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    'Quick Actions',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+              // Action Cards Grid
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                sliver: SliverGrid.count(
+                  crossAxisCount: crossAxisCount,
+                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 12,
+                  childAspectRatio: crossAxisCount == 1 ? 2.6 : 1.25,
+                  children: [
+                    _ParentActionCard(
+                      title: 'Attendance',
+                      subtitle: 'View monthly attendance',
+                      icon: Icons.event_available_outlined,
+                      gradient: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
+                      onTap: () => _openScreen(context, const ParentAttendanceScreen()),
+                    ),
+                    _ParentActionCard(
+                      title: 'Homework',
+                      subtitle: 'Download notes & PDFs',
+                      icon: Icons.menu_book_outlined,
+                      gradient: [const Color(0xFF2E7D32), const Color(0xFF1B5E20)],
+                      onTap: () => _openScreen(context, const ParentHomeworkListScreen()),
+                    ),
+                    _ParentActionCard(
+                      title: 'Chat Teachers',
+                      subtitle: 'WhatsApp messaging',
+                      icon: Icons.chat_bubble_outline,
+                      gradient: [const Color(0xFF00796B), const Color(0xFF004D40)],
+                      onTap: () => _openScreen(context, const ParentChatTeachersScreen()),
+                    ),
+                    _ParentActionCard(
+                      title: 'Timetable',
+                      subtitle: 'Class schedule',
+                      icon: Icons.calendar_month_outlined,
+                      gradient: [const Color(0xFF1565C0), const Color(0xFF0D47A1)],
+                      onTap: () => _openScreen(context, const ParentTimetableScreen()),
+                    ),
+                    _ParentActionCard(
+                      title: 'Exam Results',
+                      subtitle: 'Marks and grades',
+                      icon: Icons.workspace_premium_outlined,
+                      gradient: [const Color(0xFF6A1B9A), const Color(0xFF4A148C)],
+                      onTap: () => _openScreen(context, const ParentExamsScreen()),
+                    ),
+                    _ParentActionCard(
+                      title: 'Notifications',
+                      subtitle: 'School updates',
+                      icon: Icons.notifications_active_outlined,
+                      gradient: [const Color(0xFF00838F), const Color(0xFF004D40)],
+                      onTap: () => _openScreen(
+                        context,
+                        NotificationInboxScreen(
+                          viewerRole: UserRole.parent,
+                          parentMobile: parentMobile,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Notifications Preview
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    'Recent Notifications',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                sliver: SliverToBoxAdapter(
+                  child: _NotificationsPreview(),
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  void _open(BuildContext context, Widget screen) {
+  void _openScreen(BuildContext context, Widget screen) {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen));
   }
 }
@@ -275,6 +376,263 @@ class _ParentSummaryRow extends ConsumerWidget {
           ],
         );
       },
+    );
+  }
+}
+
+// Parent Action Card with Gradient
+class _ParentActionCard extends StatefulWidget {
+  const _ParentActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  @override
+  State<_ParentActionCard> createState() => _ParentActionCardState();
+}
+
+class _ParentActionCardState extends State<_ParentActionCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              colors: widget.gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.gradient[0].withValues(alpha: _isHovered ? 0.4 : 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(widget.icon, color: Colors.white, size: 24),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Child Card (Swipeable)
+class _ChildCard extends StatelessWidget {
+  const _ChildCard({
+    required this.name,
+    required this.class_,
+    required this.section,
+    required this.grade,
+    required this.color,
+  });
+
+  final String name;
+  final String class_;
+  final String section;
+  final String grade;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 160,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withValues(alpha: 0.7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.3),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
+              child: Icon(Icons.person, color: Colors.white, size: 20),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  class_,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// Notifications Preview
+class _NotificationsPreview extends StatelessWidget {
+  const _NotificationsPreview();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    
+    final notifications = [
+      (
+        icon: Icons.announcement,
+        title: 'School Assembly Tomorrow',
+        time: '2 hours ago',
+        color: scheme.primary,
+      ),
+      (
+        icon: Icons.assignment,
+        title: 'Homework Due: Mathematics',
+        time: '4 hours ago',
+        color: const Color(0xFF2E7D32),
+      ),
+      (
+        icon: Icons.event,
+        title: 'Parents Meeting Scheduled',
+        time: '1 day ago',
+        color: const Color(0xFF6A1B9A),
+      ),
+    ];
+
+    return Column(
+      children: [
+        for (int i = 0; i < notifications.length; i++)
+          Padding(
+            padding: EdgeInsets.only(bottom: i < notifications.length - 1 ? 12 : 0),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: notifications[i].color.withValues(alpha: 0.06),
+                border: Border.all(color: notifications[i].color.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: notifications[i].color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      notifications[i].icon,
+                      color: notifications[i].color,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          notifications[i].title,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          notifications[i].time,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey.withValues(alpha: 0.5)),
+                ],
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

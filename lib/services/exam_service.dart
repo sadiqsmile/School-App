@@ -323,8 +323,10 @@ class ExamService {
       if (obtained > maxMarks) throw Exception('Marks cannot exceed max marks');
 
       final existing = existingByStudent[studentId];
-      final prevPublished = (existing == null ? null : existing['isPublished']);
-      final isPublished = (prevPublished ?? false) == true;
+      
+      // Preserve approval/publish status on updates
+      final wasApproved = (existing == null ? null : existing['isApproved']) ?? false;
+      final wasPublished = (existing == null ? null : existing['isPublished']) ?? false;
 
       // Merge subjects.
       final rawSubjects = existing == null ? null : existing['subjects'];
@@ -361,8 +363,11 @@ class ExamService {
         'total': totalObtained,
         'percentage': double.parse(percentage.toStringAsFixed(2)),
         'grade': grade,
-        'isPublished': isPublished,
-        'enteredByTeacherUid': enteredByTeacherUid,
+        'enteredByUid': enteredByTeacherUid,
+        'enteredAt': FieldValue.serverTimestamp(),
+        'isApproved': wasApproved, // Preserve approval status
+        'isPublished': wasPublished, // Preserve publish status
+        'enteredByTeacherUid': enteredByTeacherUid, // Kept for backward compat
         'updatedAt': FieldValue.serverTimestamp(),
       }));
     }
@@ -370,13 +375,32 @@ class ExamService {
     await _commitInChunks(writes);
   }
 
-  Future<void> setResultsPublishedForClassSection({
+  // ===================== Approval Workflow (v2) =====================
+
+  /// Admin approves results for a student (before publishing)
+  Future<void> approveResultForStudent({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String examId,
+    required String studentId,
+    required String approvedByUid,
+  }) {
+    return resultsCol(schoolId: schoolId, yearId: yearId, examId: examId).doc(studentId).set({
+      'isApproved': true,
+      'approvedByUid': approvedByUid,
+      'approvedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Admin approves all results for a class-section (before publishing)
+  Future<void> approveResultsForClassSection({
     String schoolId = AppConfig.schoolId,
     required String yearId,
     required String examId,
     required String classId,
     required String sectionId,
-    required bool isPublished,
+    required String approvedByUid,
   }) async {
     final cleanedClass = classId.trim();
     final cleanedSection = sectionId.trim();
@@ -389,7 +413,62 @@ class ExamService {
     final writes = <MapEntry<DocumentReference<Map<String, dynamic>>, Map<String, Object?>>>[];
     for (final d in snap.docs) {
       writes.add(MapEntry(d.reference, {
-        'isPublished': isPublished,
+        'isApproved': true,
+        'approvedByUid': approvedByUid,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }));
+    }
+    await _commitInChunks(writes);
+  }
+
+  /// Get approval status for a class-section
+  Stream<List<ExamResult>> watchResultsApprovalStatusForClassSection({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String examId,
+    required String classId,
+    required String sectionId,
+  }) {
+    return resultsCol(schoolId: schoolId, yearId: yearId, examId: examId)
+        .where('class', isEqualTo: classId.trim())
+        .where('section', isEqualTo: sectionId.trim())
+        .snapshots()
+        .map((snap) => snap.docs.map(ExamResult.fromDoc).toList(growable: false));
+  }
+
+  /// Admin publishes approved results for class-section
+  /// Throws if any result is not approved
+  Future<void> publishResultsForClassSection({
+    String schoolId = AppConfig.schoolId,
+    required String yearId,
+    required String examId,
+    required String classId,
+    required String sectionId,
+    required String publishedByUid,
+  }) async {
+    final cleanedClass = classId.trim();
+    final cleanedSection = sectionId.trim();
+
+    final snap = await resultsCol(schoolId: schoolId, yearId: yearId, examId: examId)
+        .where('class', isEqualTo: cleanedClass)
+        .where('section', isEqualTo: cleanedSection)
+        .get();
+
+    // Check all are approved
+    for (final d in snap.docs) {
+      if ((d['isApproved'] ?? false) != true) {
+        throw Exception('Cannot publish: not all results are approved');
+      }
+    }
+
+    // All approved, proceed with publish
+    final writes = <MapEntry<DocumentReference<Map<String, dynamic>>, Map<String, Object?>>>[];
+    for (final d in snap.docs) {
+      writes.add(MapEntry(d.reference, {
+        'isPublished': true,
+        'publishedByUid': publishedByUid,
+        'publishedAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       }));
     }

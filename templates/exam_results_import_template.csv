@@ -1,0 +1,6 @@
+studentId,admissionNo,studentName,class,section,group,English,Mathematics,Science,Social Studies
+student-001,ADM001,Chioma Okafor,5,A,primary,85,92,88,90
+student-002,ADM002,Kunle Adegoke,5,A,primary,78,85,80,82
+student-003,ADM003,Zainab Hassan,5,A,primary,90,88,95,92
+student-004,ADM004,Chidi Nwosu,5,A,primary,72,75,70,73
+student-005,ADM005,Fatima Yahaya,5,A,primary,88,91,89,87

@@ -14,9 +14,16 @@ class ExamResult {
     required this.total,
     required this.percentage,
     required this.grade,
-    required this.isPublished,
+    this.enteredByUid,
+    this.enteredAt,
+    this.isApproved = false,
+    this.approvedByUid,
+    this.approvedAt,
+    this.isPublished = false,
+    this.publishedByUid,
+    this.publishedAt,
     this.updatedAt,
-    this.enteredByTeacherUid,
+    this.enteredByTeacherUid, // Keep for backward compat
   });
 
   final String studentId;
@@ -29,9 +36,21 @@ class ExamResult {
   final double total;
   final double percentage;
   final String grade;
+  
+  // Approval workflow
+  final String? enteredByUid;
+  final DateTime? enteredAt;
+  final bool isApproved;
+  final String? approvedByUid;
+  final DateTime? approvedAt;
+  
+  // Publishing workflow
   final bool isPublished;
+  final String? publishedByUid;
+  final DateTime? publishedAt;
+  
   final DateTime? updatedAt;
-  final String? enteredByTeacherUid;
+  final String? enteredByTeacherUid; // Kept for backward compat with old results
 
   factory ExamResult.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? const <String, Object?>{};
@@ -62,7 +81,14 @@ class ExamResult {
       total: readNum(data['total']),
       percentage: readNum(data['percentage']),
       grade: (data['grade'] as String?)?.trim() ?? '',
+      enteredByUid: (data['enteredByUid'] as String?)?.trim(),
+      enteredAt: readTs(data['enteredAt']),
+      isApproved: (data['isApproved'] ?? false) == true,
+      approvedByUid: (data['approvedByUid'] as String?)?.trim(),
+      approvedAt: readTs(data['approvedAt']),
       isPublished: (data['isPublished'] ?? false) == true,
+      publishedByUid: (data['publishedByUid'] as String?)?.trim(),
+      publishedAt: readTs(data['publishedAt']),
       updatedAt: readTs(data['updatedAt']),
       enteredByTeacherUid: (data['enteredByTeacherUid'] as String?)?.trim(),
     );

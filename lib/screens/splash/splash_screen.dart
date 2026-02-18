@@ -52,6 +52,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         case UserRole.admin:
           context.go('/admin');
           break;
+        case UserRole.student:
+          context.go('/student');
+          break;
       }
     }, fireImmediately: true);
   }

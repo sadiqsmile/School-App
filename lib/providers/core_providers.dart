@@ -7,6 +7,7 @@ import '../services/admin_data_service.dart';
 import '../services/admin_service.dart';
 import '../services/auth_service.dart';
 import '../services/exam_service.dart';
+import '../services/exam_csv_service.dart';
 import '../services/homework_service.dart';
 import '../services/messaging_service.dart';
 import '../services/notification_service.dart';
@@ -14,6 +15,9 @@ import '../services/notification_local_service.dart';
 import '../services/notification_token_service.dart';
 import '../services/parent_data_service.dart';
 import '../services/student_csv_import_service.dart';
+import '../services/parent_csv_import_service.dart';
+import '../services/teacher_assignment_csv_import_service.dart';
+import '../services/exam_result_csv_import_service.dart';
 import '../services/storage_service.dart';
 import '../services/teacher_data_service.dart';
 import '../services/teacher_contact_parents_service.dart';
@@ -50,6 +54,10 @@ final examServiceProvider = Provider<ExamService>((ref) {
   return ExamService();
 });
 
+final examCsvServiceProvider = Provider<ExamCsvService>((ref) {
+  return ExamCsvService();
+});
+
 final homeworkServiceProvider = Provider<HomeworkService>((ref) {
   return HomeworkService();
 });
@@ -84,6 +92,18 @@ final parentDataServiceProvider = Provider<ParentDataService>((ref) {
 
 final studentCsvImportServiceProvider = Provider<StudentCsvImportService>((ref) {
   return StudentCsvImportService();
+});
+
+final parentCsvImportServiceProvider = Provider<ParentCsvImportService>((ref) {
+  return ParentCsvImportService();
+});
+
+final teacherAssignmentCsvImportServiceProvider = Provider<TeacherAssignmentCsvImportService>((ref) {
+  return TeacherAssignmentCsvImportService();
+});
+
+final examResultCsvImportServiceProvider = Provider<ExamResultCsvImportService>((ref) {
+  return ExamResultCsvImportService();
 });
 
 final messagingServiceProvider = Provider<MessagingService>((ref) {

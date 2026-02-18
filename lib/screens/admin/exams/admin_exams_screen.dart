@@ -42,6 +42,7 @@ class _AdminExamsScreenState extends ConsumerState<AdminExamsScreen> with Single
   @override
   Widget build(BuildContext context) {
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
+    final scheme = Theme.of(context).colorScheme;
 
     return yearAsync.when(
       loading: () => const Center(child: LoadingView(message: 'Loading academic year…')),
@@ -64,35 +65,90 @@ class _AdminExamsScreenState extends ConsumerState<AdminExamsScreen> with Single
           ),
           body: Column(
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Exams',
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                    ),
-                    Text(
-                      'Year: $yearId',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
+              // ===== Gradient Header =====
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [scheme.primary, scheme.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: TabBar(
-                    controller: _tabs,
-                    isScrollable: true,
-                    tabs: [for (final g in _groups) Tab(text: _cap(g))],
-                    onTap: (_) => setState(() {}),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(Icons.school, color: Colors.white, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Exams Management',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            Text(
+                              'Academic Year: $yearId',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
+
+              // ===== Group Tabs =====
+              Container(
+                color: scheme.primary.withValues(alpha: 0.05),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        for (int idx = 0; idx < _groups.length; idx++)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: FilterChip(
+                              label: Text(_cap(_groups[idx])),
+                              selected: _tabs.index == idx,
+                              onSelected: (_) {
+                                _tabs.animateTo(idx);
+                                setState(() {});
+                              },
+                              backgroundColor: Colors.transparent,
+                              side: BorderSide(
+                                color: _tabs.index == idx ? scheme.primary : scheme.outline,
+                              ),
+                              labelStyle: TextStyle(
+                                color: _tabs.index == idx ? scheme.primary : scheme.outline,
+                                fontWeight: _tabs.index == idx ? FontWeight.w600 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
               const SizedBox(height: 8),
               Expanded(
                 child: _AdminExamList(

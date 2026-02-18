@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 
 import '../../../providers/auth_providers.dart';
 import '../../../providers/core_providers.dart';
 import '../../../widgets/loading_view.dart';
+import '../../../features/csv/teacher_assignments_csv.dart';
+import '../../../utils/csv_saver.dart';
+import 'admin_teacher_assignments_csv_import_screen.dart';
+
+enum _TeacherCsvAction {
+  export,
+  import,
+}
 
 class AdminTeachersScreen extends ConsumerStatefulWidget {
   const AdminTeachersScreen({super.key});
@@ -17,6 +26,63 @@ class _AdminTeachersScreenState extends ConsumerState<AdminTeachersScreen> {
   bool _assigning = false;
 
   static const _groups = <String>['primary', 'middle', 'highschool'];
+
+  void _snack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _exportTeacherAssignmentsCsv() async {
+    try {
+      final rows = await ref.read(teacherAssignmentCsvImportServiceProvider)
+          .exportTeacherAssignmentsForCsv();
+      final csvText = buildTeacherAssignmentsCsv(assignments: rows);
+
+      final now = DateTime.now();
+      final y = now.year.toString().padLeft(4, '0');
+      final m = now.month.toString().padLeft(2, '0');
+      final d = now.day.toString().padLeft(2, '0');
+      final fileName = 'teacher_assignments_$y$m$d.csv';
+
+      await saveCsvText(fileName: fileName, csvText: csvText);
+
+      if (!mounted) return;
+      _snack('CSV exported');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Export failed: $e');
+    }
+  }
+
+  Future<void> _importTeacherAssignmentsCsv() async {
+    try {
+      final res = await FilePicker.platform.pickFiles(
+        allowMultiple: false,
+        withData: true,
+        type: FileType.custom,
+        allowedExtensions: const ['csv'],
+      );
+      if (res == null || res.files.isEmpty) return;
+      final f = res.files.first;
+      final bytes = f.bytes;
+      if (bytes == null) {
+        _snack('Could not read the selected file. Please try again.');
+        return;
+      }
+
+      final parsed = parseTeacherAssignmentsCsvBytes(bytes: bytes);
+      if (!mounted) return;
+      final ok = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => AdminTeacherAssignmentsCsvImportScreen(parseResult: parsed),
+        ),
+      );
+      if (!mounted) return;
+      if (ok == true) _snack('Import complete');
+    } catch (e) {
+      if (!mounted) return;
+      _snack('Import failed: $e');
+    }
+  }
 
   Future<void> _createTeacherDialog() async {
     final uidController = TextEditingController();
@@ -248,6 +314,38 @@ class _AdminTeachersScreenState extends ConsumerState<AdminTeachersScreen> {
                       ?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
+              PopupMenuButton<_TeacherCsvAction>(
+                tooltip: 'CSV actions',
+                onSelected: (action) {
+                  switch (action) {
+                    case _TeacherCsvAction.export:
+                      _exportTeacherAssignmentsCsv();
+                      break;
+                    case _TeacherCsvAction.import:
+                      _importTeacherAssignmentsCsv();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: _TeacherCsvAction.export,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.download_outlined),
+                      title: Text('Export Assignments'),
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: _TeacherCsvAction.import,
+                    child: ListTile(
+                      dense: true,
+                      leading: Icon(Icons.upload_file_outlined),
+                      title: Text('Import Assignments'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 8),
               FilledButton.icon(
                 onPressed: _creating ? null : _createTeacherDialog,
                 icon: const Icon(Icons.add),

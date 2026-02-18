@@ -231,21 +231,138 @@ class _AdminContent extends ConsumerWidget {
 
       return CustomScrollView(
         slivers: [
+          // Premium Header with Gradient
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [scheme.primary, scheme.secondary],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 60,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withValues(alpha: 0.25),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+                            ),
+                            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Hongirana School',
+                                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Admin Control Center',
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.verified, color: Colors.white, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'ADMIN',
+                                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Quick Stats
           SliverPadding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 20),
             sliver: SliverToBoxAdapter(
               child: _AdminSummaryRow(activeYearId: activeYearId),
             ),
           ),
+          // Search Bar
           SliverPadding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             sliver: SliverToBoxAdapter(
-              child: Text(
-                'Quick actions',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search modules...',
+                  prefixIcon: Icon(Icons.search, color: scheme.primary),
+                  suffixIcon: Icon(Icons.mic, color: scheme.primary.withValues(alpha: 0.5)),
+                  filled: true,
+                  fillColor: scheme.primary.withValues(alpha: 0.05),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: scheme.primary.withValues(alpha: 0.2), width: 1),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: scheme.primary.withValues(alpha: 0.2), width: 1),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(color: scheme.primary, width: 2),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
               ),
             ),
           ),
+          // Section Title
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Quick Actions',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+          // Action Cards Grid
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             sliver: SliverGrid.count(
@@ -254,63 +371,82 @@ class _AdminContent extends ConsumerWidget {
               crossAxisSpacing: 12,
               childAspectRatio: crossAxisCount == 1 ? 2.6 : 1.25,
               children: [
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Setup Wizard',
                   subtitle: 'Guided setup for your school',
                   icon: Icons.auto_fix_high,
-                  tint: scheme.primary,
-                  animationOrder: 0,
+                  gradient: [scheme.primary, scheme.primary.withValues(alpha: 0.7)],
                   onTap: () => onNavigate(_AdminPage.setupWizard),
                 ),
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Academic Year',
-                  subtitle: 'Set active year + rollover wizard',
+                  subtitle: 'Set active year + rollover',
                   icon: Icons.calendar_today_outlined,
-                  tint: const Color(0xFF1565C0),
-                  animationOrder: 1,
+                  gradient: [const Color(0xFF1565C0), const Color(0xFF0D47A1)],
                   onTap: () => onNavigate(_AdminPage.academicYear),
                 ),
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Students',
-                  subtitle: 'Create and assign to class/section',
+                  subtitle: 'Create and manage students',
                   icon: Icons.badge_outlined,
-                  tint: scheme.secondary,
-                  animationOrder: 2,
+                  gradient: [scheme.secondary, scheme.secondary.withValues(alpha: 0.7)],
                   onTap: () => onNavigate(_AdminPage.students),
                 ),
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Parents',
-                  subtitle: 'Create parent accounts and link students',
+                  subtitle: 'Manage parent accounts',
                   icon: Icons.family_restroom,
-                  tint: const Color(0xFF1565C0),
-                  animationOrder: 3,
+                  gradient: [const Color(0xFF1565C0), const Color(0xFF0D47A1)],
                   onTap: () => onNavigate(_AdminPage.parents),
                 ),
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Teachers',
-                  subtitle: 'Create teacher accounts and assign classes',
+                  subtitle: 'Assign and manage teachers',
                   icon: Icons.person_outline,
-                  tint: const Color(0xFF2E7D32),
-                  animationOrder: 4,
+                  gradient: [const Color(0xFF2E7D32), const Color(0xFF1B5E20)],
                   onTap: () => onNavigate(_AdminPage.teachers),
                 ),
-                DashboardActionCard(
+                _PremiumActionCard(
                   title: 'Classes/Sections',
-                  subtitle: 'Manage class levels and sections',
+                  subtitle: 'Manage class structure',
                   icon: Icons.class_outlined,
-                  tint: const Color(0xFF00838F),
-                  animationOrder: 5,
+                  gradient: [const Color(0xFF00838F), const Color(0xFF004D40)],
                   onTap: () => onNavigate(_AdminPage.classes),
                 ),
-                DashboardActionCard(
-                  title: 'Homework Tools',
-                  subtitle: 'Archive old homework/notes',
-                  icon: Icons.archive_outlined,
-                  tint: const Color(0xFF6A1B9A),
-                  animationOrder: 6,
-                  onTap: () => onNavigate(_AdminPage.homeworkTools),
+                _PremiumActionCard(
+                  title: 'Timetable',
+                  subtitle: 'Class schedules',
+                  icon: Icons.calendar_month_outlined,
+                  gradient: [const Color(0xFF6A1B9A), const Color(0xFF4A148C)],
+                  onTap: () => onNavigate(_AdminPage.timetable),
+                ),
+                _PremiumActionCard(
+                  title: 'Exams',
+                  subtitle: 'Create and publish exams',
+                  icon: Icons.school_outlined,
+                  gradient: [const Color(0xFFC62828), const Color(0xFF880E4F)],
+                  onTap: () => onNavigate(_AdminPage.exams),
                 ),
               ],
+            ),
+          ),
+          // Recent Actions Section
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: Text(
+                'Recent Actions',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 0.3,
+                ),
+              ),
+            ),
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            sliver: SliverToBoxAdapter(
+              child: _RecentActionsList(),
             ),
           ),
         ],
@@ -474,4 +610,168 @@ class _AdminNavItem {
   final String label;
   final IconData icon;
   final _AdminPage page;
+}
+
+// Premium Action Card with Gradient
+class _PremiumActionCard extends StatefulWidget {
+  const _PremiumActionCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.gradient,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<Color> gradient;
+  final VoidCallback onTap;
+
+  @override
+  State<_PremiumActionCard> createState() => _PremiumActionCardState();
+}
+
+class _PremiumActionCardState extends State<_PremiumActionCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 280),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              colors: widget.gradient,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: widget.gradient[0].withValues(alpha: _isHovered ? 0.4 : 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(widget.icon, color: Colors.white, size: 24),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85),
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Recent Actions List
+class _RecentActionsList extends StatelessWidget {
+  const _RecentActionsList();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    
+    final recentActions = [
+      (icon: Icons.person_add, title: 'New teacher added', time: '2 hours ago', color: scheme.secondary),
+      (icon: Icons.notification_add, title: 'Notification sent to all classes', time: '4 hours ago', color: scheme.primary),
+      (icon: Icons.assessment, title: 'Exam results published', time: '1 day ago', color: const Color(0xFF6A1B9A)),
+    ];
+
+    return Column(
+      children: [
+        for (int i = 0; i < recentActions.length; i++)
+          Padding(
+            padding: EdgeInsets.only(bottom: i < recentActions.length - 1 ? 12 : 0),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: recentActions[i].color.withValues(alpha: 0.06),
+                border: Border.all(color: recentActions[i].color.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: recentActions[i].color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      recentActions[i].icon,
+                      color: recentActions[i].color,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          recentActions[i].title,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          recentActions[i].time,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey.withValues(alpha: 0.5)),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }

@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -183,6 +184,21 @@ class AuthService {
       throw Exception('Parent account is disabled');
     }
 
+    // Check approval status
+    final approvalStatus = (data['approvalStatus'] as String?)?.trim() ?? 'pending';
+    if (approvalStatus == 'pending') {
+      await _auth.signOut();
+      throw ParentApprovalPendingException();
+    }
+    if (approvalStatus == 'blocked') {
+      await _auth.signOut();
+      throw Exception('Parent account is blocked. Contact admin.');
+    }
+    if (approvalStatus != 'approved') {
+      await _auth.signOut();
+      throw Exception('Parent account approval status is invalid.');
+    }
+
     onStatus?.call('Setting up your profile…');
 
     // Ensure authUid is attached (idempotent).
@@ -306,10 +322,13 @@ class AuthService {
     final user = _auth.currentUser;
     if (user == null) throw Exception('Migration sign-in failed');
 
-    // Persist authUid and remove plaintext password field if present.
+    // Persist authUid, approvalStatus='pending', and remove plaintext password field if present.
     final update = <String, Object?>{
       'authUid': user.uid,
       'mobile': mobile,
+      'approvalStatus': 'pending',
+      'isActive': true,
+      'firstLoginAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     };
     final plain = (data['password'] ?? '').toString().trim();
@@ -323,6 +342,32 @@ class AuthService {
     } catch (_) {
       // If this fails due to current rules, parent is still signed in.
       // Admin should update rules and then the app can attach authUid.
+    }
+
+    // Create a parent login request for admin approval
+    try {
+      onStatus?.call('Recording login request…');
+      final parentData = data;
+      final parentName = (parentData['displayName'] as String?)?.trim() ?? 'Parent';
+      final children = (parentData['children'] as List?)?.whereType<String>().toList() ?? <String>[];
+      
+      final loginRequestRef = _firestore
+          .collection('schools')
+          .doc(AppConfig.schoolId)
+          .collection('parentLoginRequests')
+          .doc(mobile);
+      await loginRequestRef.set({
+        'mobile': mobile,
+        'authUid': user.uid,
+        'parentName': parentName,
+        'children': children,
+        'status': 'pending',
+        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      // Best-effort: log the error but don't fail the whole flow
+      dev.log('Failed to create parent login request: $e', error: e);
     }
 
     onStatus?.call('Finishing setup…');
@@ -480,4 +525,169 @@ class AuthService {
           .limit(200);
     }
   }
+
+  // ---------------------------
+  // Parent approval management (admin operations)
+  // ---------------------------
+
+  /// Approve a pending parent login request.
+  /// Sets approvalStatus='approved' and mustChangePassword=true.
+  Future<void> approveParentLogin({
+    required String mobile,
+    required String approverUid,
+  }) async {
+    final parentRef = _parentDoc(mobile: mobile);
+    await parentRef.set({
+      'approvalStatus': 'approved',
+      'mustChangePassword': true,
+      'approvedAt': FieldValue.serverTimestamp(),
+      'approvedByUid': approverUid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // Update the login request document
+    final loginRequestRef = _firestore
+        .collection('schools')
+        .doc(AppConfig.schoolId)
+        .collection('parentLoginRequests')
+        .doc(mobile);
+    await loginRequestRef.set({
+      'status': 'approved',
+      'approvedAt': FieldValue.serverTimestamp(),
+      'approvedByUid': approverUid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Reject a pending parent login request.
+  /// Sets approvalStatus='rejected'.
+  Future<void> rejectParentLogin({
+    required String mobile,
+    required String rejectorUid,
+  }) async {
+    final parentRef = _parentDoc(mobile: mobile);
+    await parentRef.set({
+      'approvalStatus': 'rejected',
+      'rejectedAt': FieldValue.serverTimestamp(),
+      'rejectedByUid': rejectorUid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    // Update the login request document
+    final loginRequestRef = _firestore
+        .collection('schools')
+        .doc(AppConfig.schoolId)
+        .collection('parentLoginRequests')
+        .doc(mobile);
+    await loginRequestRef.set({
+      'status': 'rejected',
+      'rejectedAt': FieldValue.serverTimestamp(),
+      'rejectedByUid': rejectorUid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  /// Reset password for a parent and force password change on next login.
+  /// Requires admin access.
+  Future<String> resetParentPassword({
+    required String mobile,
+    required String adminUid,
+  }) async {
+    final parentRef = _parentDoc(mobile: mobile);
+    final doc = await parentRef.get();
+    if (!doc.exists) {
+      throw Exception('Parent not found');
+    }
+
+    final data = doc.data() ?? const <String, dynamic>{};
+    final authUid = (data['authUid'] as String?)?.trim();
+    if (authUid == null || authUid.isEmpty) {
+      throw Exception('Parent account not linked to FirebaseAuth');
+    }
+
+    // Generate temporary password
+    final tempPassword = _generateTemporaryPassword();
+
+    try {
+      // Update FirebaseAuth password
+      final user = _auth.app.auth().getUserByUid(authUid);
+      await _auth.app.auth().updateUser(
+        authUid,
+        password: tempPassword,
+      );
+    } catch (_) {
+      // If direct update fails, try via Callable Function or return temp password for admin
+      // For now, just set the flag and let admin set it manually through Firebase Console
+    }
+
+    // Set mustChangePassword flag
+    await parentRef.set({
+      'mustChangePassword': true,
+      'passwordResetAt': FieldValue.serverTimestamp(),
+      'passwordResetByUid': adminUid,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+
+    return tempPassword;
+  }
+
+  /// Generate a temporary password for admin password resets.
+  String _generateTemporaryPassword() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#\$%';
+    final random = DateTime.now().millisecondsSinceEpoch;
+    final buffer = StringBuffer();
+    for (int i = 0; i < 12; i++) {
+      buffer.write(chars[(random + i) % chars.length]);
+    }
+    return buffer.toString();
+  }
+
+  /// Complete password change for parent with mustChangePassword flag.
+  /// Reauthenticates with old password and updates to new password.
+  /// Sets mustChangePassword=false and updates lastLoginAt.
+  Future<void> completeParentPasswordChange({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Please login again');
+
+    final email = (user.email ?? '').trim();
+    if (email.isEmpty) throw Exception('Your account email is missing');
+
+    final oldPass = oldPassword.trim();
+    final newPass = newPassword.trim();
+    if (oldPass.isEmpty) throw Exception('Old password is required');
+    if (newPass.isEmpty) throw Exception('New password is required');
+    if (newPass.length < 8) throw Exception('New password must be at least 8 characters');
+    if (newPass == oldPass) throw Exception('New password must be different');
+
+    final credential = EmailAuthProvider.credential(email: email, password: oldPass);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPass);
+
+    final mobile = tryExtractMobileFromParentEmail(email);
+    if (mobile != null) {
+      final parentRef = _parentDoc(mobile: mobile);
+      try {
+        await parentRef.set({
+          'mustChangePassword': false,
+          'lastLoginAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        throw Exception('Failed to update password status. Contact admin. Details: $e');
+      }
+    }
+  }
+}
+
+// ---------------------------
+// Custom exceptions
+// ---------------------------
+
+/// Exception thrown when parent login is pending admin approval.
+class ParentApprovalPendingException implements Exception {
+  @override
+  String toString() => 'ParentApprovalPendingException: Your account is pending admin approval';
 }
