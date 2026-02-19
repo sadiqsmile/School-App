@@ -150,6 +150,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       // Parent authentication flow screens
       GoRoute(
         path: '/parent-auth',
+        redirect: (context, state) => null,
         routes: [
           GoRoute(
             path: 'awaiting-approval',

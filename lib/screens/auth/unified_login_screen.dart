@@ -558,7 +558,7 @@ class _PremiumHeader extends StatelessWidget {
             width: logoBadgeSize,
             height: logoBadgeSize,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
+            borderRadius: BorderRadius.circular(16),
               color: Colors.white.withValues(alpha: 0.92),
               border: Border.all(color: Colors.black.withValues(alpha: 0.10)),
             boxShadow: [
@@ -569,7 +569,8 @@ class _PremiumHeader extends StatelessWidget {
               ),
             ],
           ),
-          child: ClipOval(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
             child: ColoredBox(
               color: Colors.white,
               child: Padding(
@@ -619,8 +620,9 @@ class _PremiumHeader extends StatelessWidget {
         Text(
           'Hongirana School of Excellence',
           style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.6,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.2,
+                height: 1.2,
                 color: const Color(0xFF0F1419),
               ),
           textAlign: TextAlign.center,
