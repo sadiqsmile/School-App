@@ -1,11 +1,11 @@
 {
-    "name": "school_app",
-    "short_name": "school_app",
+    "name": "Hongirana",
+    "short_name": "Hongirana",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Hongirana School of Excellence - School Management System",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

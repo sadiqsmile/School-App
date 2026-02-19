@@ -11,7 +11,7 @@ import '../../widgets/dashboard_ui.dart';
 import '../admin/attendance/admin_attendance_screen.dart';
 import '../admin/classes/admin_classes_sections_screen.dart';
 import '../admin/parents/admin_parents_screen.dart';
-import '../admin/setup/admin_setup_wizard_screen.dart';
+import '../admin/imports/modern_admin_setup_wizard.dart';
 import '../admin/students/admin_students_screen.dart';
 import '../admin/teachers/admin_teachers_screen.dart';
 import '../admin/timetable/admin_timetable_screen.dart';
@@ -184,7 +184,7 @@ class _AdminContent extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (page == _AdminPage.setupWizard) {
-      return const AdminSetupWizardScreen();
+      return const ModernAdminSetupWizard();
     }
     if (page == _AdminPage.academicYear) {
       return const AdminAcademicYearSettingsScreen();

@@ -216,10 +216,11 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     final media = MediaQuery.of(context);
     final screenWidth = media.size.width;
     final isDesktop = screenWidth >= 1000;
+    final isTablet = screenWidth >= 600 && screenWidth < 1000;
 
-    // Responsive max width: slimmer on desktop web, comfortably sized on mobile.
-    final maxContentWidth = isDesktop ? 560.0 : 720.0;
-    final horizontalPadding = isDesktop ? 24.0 : 20.0;
+    // Responsive max width
+    final maxContentWidth = isDesktop ? 520.0 : (isTablet ? 500.0 : 420.0);
+    final horizontalPadding = isDesktop ? 32.0 : (isTablet ? 24.0 : 20.0);
 
     return Scaffold(
       appBar: AppBar(
@@ -227,33 +228,49 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
       ),
-      backgroundColor: const Color(0xFFFAFBFC),
+      backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Animated gradient background
-          _AnimatedGradientBackground(),
+          // Premium gradient background (light blue → violet → white)
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  const Color(0xFFE3F2FD), // Light blue
+                  const Color(0xFFF3E5F5), // Light violet
+                  const Color(0xFFFAFAFA), // Near white
+                  Colors.white,
+                ],
+                stops: const [0.0, 0.3, 0.7, 1.0],
+              ),
+            ),
+          ),
 
-          // Subtle decorative blobs (glassy effect)
+          // Animated decorative blobs for premium feel
+          _AnimatedGradientBackground(),
+          
           Positioned(
-            top: -100,
-            right: -100,
-            child: _BlurBlob(size: 300, color: Colors.blue.withValues(alpha: 0.15)),
+            top: -120,
+            right: -120,
+            child: _BlurBlob(size: 350, color: const Color(0xFF64B5F6).withValues(alpha: 0.20)),
           ),
           Positioned(
-            bottom: -80,
+            bottom: -100,
+            left: -100,
+            child: _BlurBlob(size: 320, color: const Color(0xFFAB47BC).withValues(alpha: 0.18)),
+          ),
+          Positioned(
+            top: 200,
             left: -80,
-            child: _BlurBlob(size: 280, color: Colors.purple.withValues(alpha: 0.12)),
+            child: _BlurBlob(size: 280, color: const Color(0xFF42A5F5).withValues(alpha: 0.15)),
           ),
           Positioned(
-            top: 120,
-            left: -120,
-            child: _BlurBlob(size: 240, color: Colors.teal.withValues(alpha: 0.10)),
-          ),
-          Positioned(
-            bottom: 120,
-            right: -140,
-            child: _BlurBlob(size: 260, color: Colors.indigo.withValues(alpha: 0.09)),
+            bottom: 180,
+            right: -100,
+            child: _BlurBlob(size: 300, color: const Color(0xFF9575CD).withValues(alpha: 0.15)),
           ),
 
           // Main content
@@ -263,7 +280,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(
                   horizontal: horizontalPadding,
-                  vertical: isDesktop ? 28 : 20,
+                  vertical: isDesktop ? 32 : 24,
                 ),
                 child: Center(
                   child: ConstrainedBox(
@@ -271,33 +288,41 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        // Header with animation
+                        // Premium header with glass logo container
                         AppAnimations.fadeInUp(
+                          duration: const Duration(milliseconds: 600),
                           child: _PremiumHeader(),
                         ),
-                        const SizedBox(height: 26),
+                        SizedBox(height: isDesktop ? 32 : 28),
 
-                        // Role selector with animation
+                        // iOS-style segmented control
                         AppAnimations.fadeInUp(
+                          duration: const Duration(milliseconds: 700),
                           child: _ModernRoleSelector(
                             value: _tab,
                             onChanged: _anyLoading ? null : (v) => setState(() => _tab = v),
                           ),
                         ),
-                        const SizedBox(height: 22),
+                        SizedBox(height: isDesktop ? 28 : 24),
 
-                        // Form switcher with animation
+                        // Form switcher with smooth transitions (fixed height to prevent layout shifts)
                         AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
-                          switchInCurve: Curves.easeOut,
-                          switchOutCurve: Curves.easeIn,
+                          switchInCurve: Curves.easeOutCubic,
+                          switchOutCurve: Curves.easeInCubic,
+                          layoutBuilder: (currentChild, previousChildren) {
+                            return Stack(
+                              alignment: Alignment.topCenter,
+                              children: <Widget>[
+                                ...previousChildren,
+                                if (currentChild != null) currentChild,
+                              ],
+                            );
+                          },
                           transitionBuilder: (child, animation) {
-                            return SlideTransition(
-                              position: Tween<Offset>(
-                                begin: const Offset(0.2, 0),
-                                end: Offset.zero,
-                              ).animate(animation),
-                              child: FadeTransition(opacity: animation, child: child),
+                            return FadeTransition(
+                              opacity: animation,
+                              child: child,
                             );
                           },
                           child: switch (_tab) {
@@ -309,6 +334,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                                 loading: _parentLoading,
                                 obscure: _parentObscure,
                                 statusMessage: _parentStatus,
+                                themeColor: const Color(0xFF42A5F5),
                                 onToggleObscure: () =>
                                     setState(() => _parentObscure = !_parentObscure),
                                 onSubmit: _signInParent,
@@ -323,6 +349,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                                 loading: _teacherLoading,
                                 obscure: _teacherObscure,
                                 statusText: _teacherLoading ? 'Signing in…' : null,
+                                themeColor: const Color(0xFF66BB6A),
                                 onToggleObscure: () =>
                                     setState(() => _teacherObscure = !_teacherObscure),
                                 onSubmit: _signInTeacher,
@@ -337,6 +364,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                                 loading: _adminLoading,
                                 obscure: _adminObscure,
                                 statusText: _adminLoading ? 'Signing in…' : null,
+                                themeColor: const Color(0xFFFF9800),
                                 onToggleObscure: () =>
                                     setState(() => _adminObscure = !_adminObscure),
                                 onSubmit: _signInAdmin,
@@ -531,111 +559,126 @@ class _BlurBlobState extends State<_BlurBlob> with TickerProviderStateMixin {
   }
 }
 
-/// Premium header with school name and subtitle
+/// Premium header with glassmorphic logo container
 class _PremiumHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    // Branding logo:
-    // Preferred: assets/images/logo.png (per requirements)
-    // Fallback: assets/images/school_logo.png (older path)
+    // Branding logo paths
     const primaryLogoAssetPath = 'assets/images/logo.png';
     const fallbackLogoAssetPath = 'assets/images/school_logo.png';
 
     final media = MediaQuery.of(context);
     final dpr = media.devicePixelRatio;
     final isCompact = media.size.width < 360;
+    final isMobile = media.size.width < 600;
 
-    // Keep logo larger so the fine text/details remain readable.
-    final logoBadgeSize = isCompact ? 96.0 : 124.0;
-    final logoImageSize = isCompact ? 80.0 : 108.0;
-    final cachePx = (logoImageSize * dpr).round();
+    // Responsive logo sizing - 70-85px mobile, 90-110px web
+    final logoSize = isCompact ? 80.0 : (isMobile ? 85.0 : 105.0);
+    // Increased cache multiplier for HD rendering (2x for crisp display)
+    final cachePx = (logoSize * 2.0 * dpr).round();
 
     return Column(
       children: [
-        // Logo (asset) with graceful fallback
+        // Clean logo - no shape constraints, natural aspect ratio
         RepaintBoundary(
-          child: Container(
-            width: logoBadgeSize,
-            height: logoBadgeSize,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-              color: Colors.white.withValues(alpha: 0.92),
-              border: Border.all(color: Colors.black.withValues(alpha: 0.10)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.10),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+          child: Align(
+            alignment: Alignment.center,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: logoSize,
+                maxHeight: logoSize,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: ColoredBox(
-              color: Colors.white,
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Center(
-                  child: SizedBox(
-                      width: logoImageSize,
-                      height: logoImageSize,
-                    child: Image.asset(
-                        primaryLogoAssetPath,
-                      fit: BoxFit.contain,
-                      filterQuality: FilterQuality.high,
-                      isAntiAlias: true,
-                        cacheWidth: cachePx,
-                        cacheHeight: cachePx,
-                        gaplessPlayback: true,
-                      errorBuilder: (context, error, stackTrace) {
-                          // If primary logo doesn't exist, try fallback.
-                          return Image.asset(
-                            fallbackLogoAssetPath,
-                            fit: BoxFit.contain,
-                            filterQuality: FilterQuality.high,
-                            isAntiAlias: true,
-                            cacheWidth: cachePx,
-                            cacheHeight: cachePx,
-                            gaplessPlayback: true,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(
-                                child: Icon(
-                                  Icons.school,
-                                  size: 44,
-                                  color: const Color(0xFF1F7FB8),
-                                ),
-                              );
-                            },
-                          );
-                      },
-                    ),
+              decoration: BoxDecoration(
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
                   ),
-                ),
+                ],
+              ),
+              child: Image.asset(
+                primaryLogoAssetPath,
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                isAntiAlias: true,
+                // HD cache settings for maximum clarity
+                cacheWidth: cachePx,
+                cacheHeight: cachePx,
+                gaplessPlayback: true,
+                errorBuilder: (context, error, stackTrace) {
+                  return Image.asset(
+                    fallbackLogoAssetPath,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    isAntiAlias: true,
+                    // HD cache settings for fallback logo too
+                    cacheWidth: cachePx,
+                    cacheHeight: cachePx,
+                    gaplessPlayback: true,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.school_rounded,
+                        size: 64,
+                        color: const Color(0xFF42A5F5),
+                      );
+                    },
+                  );
+                },
               ),
             ),
           ),
-          ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 20),
+        // 2-line title: HONGIRANA / School of Excellence
         Text(
-          'Hongirana School of Excellence',
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.2,
-                height: 1.2,
-                color: const Color(0xFF0F1419),
+          'HONGIRANA',
+          style: TextStyle(
+            fontFamily: 'Ubuntu',
+            fontSize: isCompact ? 28 : (isMobile ? 32 : 40),
+            fontWeight: FontWeight.w900,
+            letterSpacing: 0.5,
+            height: 1.0,
+            color: const Color(0xFF5C2E2E),
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: 0.08),
+                offset: const Offset(0, 2),
+                blurRadius: 4,
               ),
+            ],
+          ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 4),
+        Text(
+          'School of Excellence',
+          style: TextStyle(
+            fontFamily: 'Ubuntu',
+            fontSize: isCompact ? 15 : (isMobile ? 16 : 18),
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.2,
+            height: 1.1,
+            color: const Color(0xFF5C2E2E),
+            shadows: [
+              Shadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                offset: const Offset(0, 1),
+                blurRadius: 2,
+              ),
+            ],
+          ),
+          textAlign: TextAlign.center,
+        ),
         const SizedBox(height: 8),
         Text(
           'Welcome back',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: const Color(0xFF79747E),
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.1,
-              ),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.3,
+            color: const Color(0xFF6B7280),
+          ),
           textAlign: TextAlign.center,
         ),
       ],
@@ -699,18 +742,18 @@ class _ModernRoleSelector extends StatelessWidget {
             ),
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 10 : 12,
-                vertical: 14,
+                horizontal: isMobile ? 8 : 10,
+                vertical: 10,
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     icon,
-                    size: 24,
+                    size: 20,
                     color: isSelected ? Colors.white : const Color(0xFF5F6368),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     label,
                     maxLines: 1,
@@ -732,26 +775,34 @@ class _ModernRoleSelector extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.35),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.45)),
+        color: Colors.white.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.8),
+          width: 1.5,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.6),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, -2),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         child: Row(
           children: [
-            pill(tab: LoginTab.parent, label: 'Parent', icon: Icons.family_restroom),
-            const SizedBox(width: 8),
-            pill(tab: LoginTab.teacher, label: 'Teacher', icon: Icons.school_outlined),
-            const SizedBox(width: 8),
-            pill(tab: LoginTab.admin, label: 'Admin', icon: Icons.admin_panel_settings_outlined),
+            pill(tab: LoginTab.parent, label: 'Parent', icon: Icons.family_restroom_rounded),
+            const SizedBox(width: 6),
+            pill(tab: LoginTab.teacher, label: 'Teacher', icon: Icons.school_rounded),
+            const SizedBox(width: 6),
+            pill(tab: LoginTab.admin, label: 'Admin', icon: Icons.admin_panel_settings_rounded),
           ],
         ),
       ),
@@ -761,28 +812,31 @@ class _ModernRoleSelector extends StatelessWidget {
   Map<String, Color> _getRoleColors(LoginTab tab) {
     return switch (tab) {
       LoginTab.parent => {
-          'gradient1': const Color(0xFF42A5F5),
-          'gradient2': const Color(0xFF29B6F6),
+          'gradient1': const Color(0xFF42A5F5), // Blue
+          'gradient2': const Color(0xFF1E88E5), 
           'border': const Color(0xFF1976D2),
           'shadow': const Color(0xFF42A5F5),
+          'input': const Color(0xFF42A5F5),
         },
       LoginTab.teacher => {
-          'gradient1': const Color(0xFF66BB6A),
-          'gradient2': const Color(0xFF4CAF50),
+          'gradient1': const Color(0xFF66BB6A), // Light Green
+          'gradient2': const Color(0xFF43A047),
           'border': const Color(0xFF388E3C),
           'shadow': const Color(0xFF66BB6A),
+          'input': const Color(0xFF66BB6A),
         },
       LoginTab.admin => {
-          'gradient1': const Color(0xFFFFA726),
-          'gradient2': const Color(0xFFFF9800),
-          'border': const Color(0xFFF57C00),
-          'shadow': const Color(0xFFFFA726),
+          'gradient1': const Color(0xFFFF9800), // Orange
+          'gradient2': const Color(0xFFF57C00),
+          'border': const Color(0xFFEF6C00),
+          'shadow': const Color(0xFFFF9800),
+          'input': const Color(0xFFFF9800),
         },
     };
   }
 }
 
-/// Glassmorphic card wrapper
+/// Glassmorphic card wrapper with premium 2026 styling
 class _GlassmorphicCard extends StatelessWidget {
   final Widget child;
 
@@ -791,30 +845,40 @@ class _GlassmorphicCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(28),
       child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: Container(
-          padding: const EdgeInsets.all(28),
+          padding: const EdgeInsets.all(32),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withValues(alpha: 0.82),
-                Colors.white.withValues(alpha: 0.70),
+                Colors.white.withValues(alpha: 0.85),
+                Colors.white.withValues(alpha: 0.75),
               ],
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(28),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.55),
-              width: 1.4,
+              color: Colors.white.withValues(alpha: 0.8),
+              width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.08),
+                color: Colors.black.withValues(alpha: 0.10),
+                blurRadius: 40,
+                offset: const Offset(0, 15),
+              ),
+              BoxShadow(
+                color: const Color(0xFF42A5F5).withValues(alpha: 0.08),
                 blurRadius: 30,
-                offset: const Offset(0, 10),
+                offset: const Offset(0, 8),
+              ),
+              BoxShadow(
+                color: Colors.white.withValues(alpha: 0.7),
+                blurRadius: 10,
+                offset: const Offset(0, -5),
               ),
             ],
           ),
@@ -825,16 +889,20 @@ class _GlassmorphicCard extends StatelessWidget {
   }
 }
 
-/// Premium button with gradient and loading state
+/// Premium button with gradient and loading state (2026 style)
 class _PremiumButton extends StatelessWidget {
   final String label;
   final bool loading;
   final VoidCallback? onPressed;
+  final Color gradient1;
+  final Color gradient2;
 
   const _PremiumButton({
     required this.label,
     required this.loading,
     required this.onPressed,
+    this.gradient1 = const Color(0xFF42A5F5),
+    this.gradient2 = const Color(0xFF1976D2),
   });
 
   @override
@@ -845,63 +913,77 @@ class _PremiumButton extends StatelessWidget {
       enabled: enabled,
       onTap: onPressed,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOut,
-        height: 58,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        height: 56,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: enabled
-                ? [
-                    const Color(0xFF1F7FB8),
-                    const Color(0xFF1565A0),
-                  ]
+                ? [gradient1, gradient2]
                 : [
-                    const Color(0xFF1F7FB8).withValues(alpha: 0.55),
-                    const Color(0xFF1565A0).withValues(alpha: 0.55),
+                    gradient1.withValues(alpha: 0.50),
+                    gradient2.withValues(alpha: 0.50),
                   ],
           ),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF1F7FB8)
-                  .withValues(alpha: enabled ? 0.30 : 0.12),
-              blurRadius: enabled ? 18 : 10,
-              offset: const Offset(0, 10),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: enabled
+              ? [
+                  BoxShadow(
+                    color: gradient1.withValues(alpha: 0.20),
+                    blurRadius: 12,
+                    offset: const Offset(0, 6),
+                    spreadRadius: 0,
+                  ),
+                  BoxShadow(
+                    color: gradient2.withValues(alpha: 0.15),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                    spreadRadius: 0,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: gradient1.withValues(alpha: 0.10),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
         ),
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
             onTap: onPressed,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
+            splashColor: Colors.white.withValues(alpha: 0.3),
+            highlightColor: Colors.white.withValues(alpha: 0.1),
             child: Center(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (loading) ...[
                     SizedBox(
-                      width: 22,
-                      height: 22,
+                      width: 24,
+                      height: 24,
                       child: CircularProgressIndicator(
-                        strokeWidth: 2.6,
+                        strokeWidth: 3,
                         valueColor: AlwaysStoppedAnimation(
-                          Colors.white.withValues(alpha: 0.95),
+                          Colors.white.withValues(alpha: 0.98),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 14),
                   ] else
-                    const Icon(Icons.login, color: Colors.white, size: 21),
-                  const SizedBox(width: 10),
+                    const Icon(Icons.login_rounded, color: Colors.white, size: 22),
+                  const SizedBox(width: 12),
                   Text(
                     label,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.6,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          letterSpacing: 0.5,
                         ),
                   ),
                 ],
@@ -922,6 +1004,7 @@ class _PremiumParentForm extends StatelessWidget {
   final bool loading;
   final bool obscure;
   final String? statusMessage;
+  final Color themeColor;
   final VoidCallback onToggleObscure;
   final VoidCallback onSubmit;
   final VoidCallback onHelpTap;
@@ -934,6 +1017,7 @@ class _PremiumParentForm extends StatelessWidget {
     required this.loading,
     required this.obscure,
     required this.statusMessage,
+    required this.themeColor,
     required this.onToggleObscure,
     required this.onSubmit,
     required this.onHelpTap,
@@ -981,6 +1065,7 @@ class _PremiumParentForm extends StatelessWidget {
                 hint: '10000 00000',
                 icon: Icons.phone_android,
                 prefix: '+91 ',
+                focusColor: themeColor,
               ),
               validator: (value) {
                 final v = (value ?? '').trim();
@@ -1002,6 +1087,7 @@ class _PremiumParentForm extends StatelessWidget {
                 context,
                 label: 'Password',
                 icon: Icons.lock_outline,
+                focusColor: themeColor,
                 suffixIcon: IconButton(
                   icon: Icon(
                     obscure ? Icons.visibility_off : Icons.visibility,
@@ -1022,6 +1108,8 @@ class _PremiumParentForm extends StatelessWidget {
             _PremiumButton(
               label: 'Sign in',
               loading: loading,
+              gradient1: themeColor,
+              gradient2: _darkenColor(themeColor, 0.2),
               onPressed: loading ? null : onSubmit,
             ),
 
@@ -1087,34 +1175,66 @@ class _PremiumParentForm extends StatelessWidget {
     required IconData icon,
     String? prefix,
     Widget? suffixIcon,
+    Color focusColor = const Color(0xFF42A5F5),
   }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFF79747E)),
-      prefix: prefix != null ? Text(prefix) : null,
+      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
+      prefix: prefix != null ? Text(
+        prefix,
+        style: const TextStyle(
+          color: Color(0xFF424242),
+          fontWeight: FontWeight.w600,
+        ),
+      ) : null,
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: const Color(0xFFF5F5F5),
+      fillColor: Colors.white.withValues(alpha: 0.85),
+      labelStyle: const TextStyle(
+        color: Color(0xFF616161),
+        fontSize: 14,
+      ),
+      hintStyle: TextStyle(
+        color: const Color(0xFF9E9E9E).withValues(alpha: 0.7),
+        fontSize: 14,
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFFE0E0E0),
-          width: 1,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFF1F7FB8),
-          width: 2,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: focusColor,
+          width: 2.5,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 1.5,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 2.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
     );
   }
 }
@@ -1128,6 +1248,7 @@ class _PremiumEmailForm extends StatelessWidget {
   final bool loading;
   final bool obscure;
   final String? statusText;
+  final Color themeColor;
   final VoidCallback onToggleObscure;
   final VoidCallback onSubmit;
   final VoidCallback onHelpTap;
@@ -1141,6 +1262,7 @@ class _PremiumEmailForm extends StatelessWidget {
     required this.loading,
     required this.obscure,
     required this.statusText,
+    required this.themeColor,
     required this.onToggleObscure,
     required this.onSubmit,
     required this.onHelpTap,
@@ -1182,6 +1304,7 @@ class _PremiumEmailForm extends StatelessWidget {
                 context,
                 label: 'Email address',
                 icon: Icons.alternate_email,
+                focusColor: themeColor,
               ),
               validator: (value) {
                 final v = (value ?? '').trim();
@@ -1202,6 +1325,7 @@ class _PremiumEmailForm extends StatelessWidget {
                 context,
                 label: 'Password',
                 icon: Icons.lock_outline,
+                focusColor: themeColor,
                 suffixIcon: IconButton(
                   icon: Icon(
                     obscure ? Icons.visibility_off : Icons.visibility,
@@ -1222,6 +1346,8 @@ class _PremiumEmailForm extends StatelessWidget {
             _PremiumButton(
               label: 'Sign in',
               loading: loading,
+              gradient1: themeColor,
+              gradient2: _darkenColor(themeColor, 0.2),
               onPressed: loading ? null : onSubmit,
             ),
 
@@ -1300,37 +1426,59 @@ class _PremiumEmailForm extends StatelessWidget {
     required String label,
     required IconData icon,
     Widget? suffixIcon,
+    Color focusColor = const Color(0xFF42A5F5),
   }) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, size: 20, color: const Color(0xFF79747E)),
+      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: const Color(0xFFF5F5F5),
+      fillColor: Colors.white.withValues(alpha: 0.85),
+      labelStyle: const TextStyle(
+        color: Color(0xFF616161),
+        fontSize: 14,
+      ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFFE0E0E0),
-          width: 1,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(14),
-        borderSide: const BorderSide(
-          color: Color(0xFF1F7FB8),
-          width: 2,
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: focusColor,
+          width: 2.5,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 1.5,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 2.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
     );
   }
 }
 
-/// Premium footer with branding
+/// Premium footer with branding (2026 style)
 class _PremiumFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -1338,27 +1486,58 @@ class _PremiumFooter extends StatelessWidget {
       children: [
         Container(
           height: 1,
-          color: Colors.black.withValues(alpha: 0.06),
+          margin: const EdgeInsets.symmetric(horizontal: 40),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.08),
+                Colors.transparent,
+              ],
+            ),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Text(
           '© 2026 Hongirana School of Excellence',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFF99A3A0),
+                color: const Color(0xFF9CA3AF),
                 fontSize: 12,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.3,
               ),
           textAlign: TextAlign.center,
         ),
-        const SizedBox(height: 4),
-        Text(
-          'v1.0.0',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: const Color(0xFFB3B9B8),
-                fontSize: 11,
-              ),
-          textAlign: TextAlign.center,
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF42A5F5).withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            'v1.0.0',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: const Color(0xFF42A5F5),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+          ),
         ),
+        const SizedBox(height: 8),
       ],
     );
   }
+}
+
+/// Helper to darken a color by a factor (0.0 - 1.0)
+Color _darkenColor(Color color, double factor) {
+  assert(factor >= 0 && factor <= 1);
+  
+  final int red = (color.red * (1 - factor)).round();
+  final int green = (color.green * (1 - factor)).round();
+  final int blue = (color.blue * (1 - factor)).round();
+  
+  return Color.fromRGBO(red, green, blue, color.opacity);
 }

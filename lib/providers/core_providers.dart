@@ -18,6 +18,7 @@ import '../services/student_csv_import_service.dart';
 import '../services/parent_csv_import_service.dart';
 import '../services/teacher_assignment_csv_import_service.dart';
 import '../services/exam_result_csv_import_service.dart';
+import '../services/class_section_csv_import_service.dart';
 import '../services/storage_service.dart';
 import '../services/teacher_data_service.dart';
 import '../services/teacher_contact_parents_service.dart';
@@ -104,6 +105,10 @@ final teacherAssignmentCsvImportServiceProvider = Provider<TeacherAssignmentCsvI
 
 final examResultCsvImportServiceProvider = Provider<ExamResultCsvImportService>((ref) {
   return ExamResultCsvImportService();
+});
+
+final classSectionCsvImportServiceProvider = Provider<ClassSectionCsvImportService>((ref) {
+  return ClassSectionCsvImportService();
 });
 
 final messagingServiceProvider = Provider<MessagingService>((ref) {

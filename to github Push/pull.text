@@ -49,4 +49,8 @@ ________________________________________________________________________
 Flutter analyze
 Flutter pub get
 Flutter build web --release
-Firebase deploy --only hosting
+cmd /c npx firebase deploy --only hosting
+
+--------------------------------------------------------------------------
+flutter build web
+cmd /c npx firebase deploy --only hosting
