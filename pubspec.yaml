@@ -48,6 +48,7 @@ dependencies:
   shared_preferences: ^2.5.4
   file_picker: ^10.2.0
   csv: ^6.0.0
+  excel: ^4.0.4
   url_launcher: ^6.3.2
   web: ^1.1.0
   cryptography: ^2.9.0

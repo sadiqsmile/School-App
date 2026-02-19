@@ -12,6 +12,7 @@ import '../admin/attendance/admin_attendance_screen.dart';
 import '../admin/classes/admin_classes_sections_screen.dart';
 import '../admin/parents/admin_parents_screen.dart';
 import '../admin/imports/modern_admin_setup_wizard.dart';
+import '../admin/imports/excel_import_export_screen.dart';
 import '../admin/students/admin_students_screen.dart';
 import '../admin/teachers/admin_teachers_screen.dart';
 import '../admin/timetable/admin_timetable_screen.dart';
@@ -34,6 +35,7 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
 
   static const _items = <_AdminNavItem>[
     _AdminNavItem('Setup Wizard', Icons.auto_fix_high, _AdminPage.setupWizard),
+    _AdminNavItem('Excel Import / Export', Icons.table_view_outlined, _AdminPage.excelImportExport),
     _AdminNavItem('Dashboard', Icons.dashboard, _AdminPage.dashboard),
     _AdminNavItem('Academic Year', Icons.calendar_today, _AdminPage.academicYear),
     _AdminNavItem('Students', Icons.badge, _AdminPage.students),
@@ -185,6 +187,9 @@ class _AdminContent extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     if (page == _AdminPage.setupWizard) {
       return const ModernAdminSetupWizard();
+    }
+    if (page == _AdminPage.excelImportExport) {
+      return const AdminExcelImportExportScreen();
     }
     if (page == _AdminPage.academicYear) {
       return const AdminAcademicYearSettingsScreen();
@@ -455,6 +460,7 @@ class _AdminContent extends ConsumerWidget {
 
     final title = switch (page) {
       _AdminPage.setupWizard => 'Admin Setup Wizard',
+      _AdminPage.excelImportExport => 'Excel Import / Export',
       _AdminPage.dashboard => 'Admin Dashboard',
       _AdminPage.academicYear => 'Academic Year Settings',
       _AdminPage.students => 'Manage Students',
@@ -471,6 +477,8 @@ class _AdminContent extends ConsumerWidget {
     final desc = switch (page) {
       _AdminPage.setupWizard =>
         'Guided setup: academic year → classes → accounts → assignments → verify attendance.',
+      _AdminPage.excelImportExport =>
+        'Import or export students, parents, and teachers with CSV or Excel files.',
       _AdminPage.dashboard =>
         'Overview: total students, attendance, and recent notices.',
       _AdminPage.academicYear => 'Create years, set active year, and run rollover/promotion.',
@@ -591,6 +599,7 @@ class _AdminSummaryRow extends ConsumerWidget {
 
 enum _AdminPage {
   setupWizard,
+  excelImportExport,
   dashboard,
   academicYear,
   students,

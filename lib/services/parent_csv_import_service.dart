@@ -65,12 +65,17 @@ class ParentCsvImportService {
   Future<ParentCsvImportReport> importParents({
     String schoolId = AppConfig.schoolId,
     required List<ParentCsvRow> rows,
+    bool allowUpdates = true,
     void Function(int done, int total)? onProgress,
   }) async {
     final results = <ParentCsvImportRowResult>[];
 
     final school = _schoolDoc(schoolId: schoolId);
     final parentsCol = school.collection('parents');
+
+    final existingSnap = await parentsCol.get();
+    final existingMobiles = existingSnap.docs.map((d) => d.id.trim()).toSet();
+    final seenMobiles = <String>{};
 
     const maxWritesPerBatch = 400;
     WriteBatch batch = _firestore.batch();
@@ -91,6 +96,19 @@ class ParentCsvImportService {
         final cleanedMobile = r.mobile.trim();
         final cleanedDisplayName = r.displayName.trim();
 
+        if (seenMobiles.contains(cleanedMobile)) {
+          results.add(ParentCsvImportRowResult(
+            rowNumber: r.rowNumber,
+            success: false,
+            message: 'Duplicate mobile in file',
+          ));
+          done++;
+          onProgress?.call(done, rows.length);
+          continue;
+        }
+
+        seenMobiles.add(cleanedMobile);
+
         if (cleanedMobile.isEmpty) {
           results.add(ParentCsvImportRowResult(
             rowNumber: r.rowNumber,
@@ -107,6 +125,18 @@ class ParentCsvImportService {
             rowNumber: r.rowNumber,
             success: false,
             message: 'Display name is required',
+          ));
+          done++;
+          onProgress?.call(done, rows.length);
+          continue;
+        }
+
+        final exists = existingMobiles.contains(cleanedMobile);
+        if (exists && !allowUpdates) {
+          results.add(ParentCsvImportRowResult(
+            rowNumber: r.rowNumber,
+            success: false,
+            message: 'Parent already exists',
           ));
           done++;
           onProgress?.call(done, rows.length);
@@ -138,7 +168,7 @@ class ParentCsvImportService {
             'isActive': r.isActive,
             'children': r.childrenIds,
             'failedAttempts': 0,
-            'createdAt': FieldValue.serverTimestamp(),
+            if (!exists) 'createdAt': FieldValue.serverTimestamp(),
             'updatedAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),

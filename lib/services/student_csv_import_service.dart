@@ -67,6 +67,7 @@ class StudentCsvImportService {
   Future<StudentCsvImportReport> importStudents({
     String schoolId = AppConfig.schoolId,
     required List<StudentCsvRow> rows,
+    bool allowUpdates = true,
     void Function(int done, int total)? onProgress,
   }) async {
     final results = <StudentCsvImportRowResult>[];
@@ -75,6 +76,34 @@ class StudentCsvImportService {
     final studentsCol = school.collection('students');
     final admissionIndexCol = school.collection('admissionNumbers');
     final parentsCol = school.collection('parents');
+
+    final admissionIndexSnap = await admissionIndexCol.get();
+    final admissionIndex = <String, String>{};
+    for (final doc in admissionIndexSnap.docs) {
+      final admissionNo = doc.id.trim();
+      final studentId = (doc.data()['studentId'] as String?)?.trim();
+      if (admissionNo.isNotEmpty && studentId != null && studentId.isNotEmpty) {
+        admissionIndex[admissionNo] = studentId;
+      }
+    }
+
+    final existingStudentsSnap = await studentsCol.get();
+    final existingById = <String, Map<String, dynamic>>{};
+    final existingByNameKey = <String, String>{};
+    for (final doc in existingStudentsSnap.docs) {
+      final data = doc.data();
+      existingById[doc.id] = data;
+      final name = ((data['name'] as String?) ?? (data['fullName'] as String?) ?? '').trim();
+      final classId = ((data['class'] as String?) ?? (data['classId'] as String?) ?? '').trim();
+      final sectionId = ((data['section'] as String?) ?? (data['sectionId'] as String?) ?? '').trim();
+      if (name.isNotEmpty && classId.isNotEmpty && sectionId.isNotEmpty) {
+        final key = _nameClassSectionKey(name, classId, sectionId);
+        existingByNameKey[key] = doc.id;
+      }
+    }
+
+    final seenAdmissions = <String>{};
+    final seenNameKeys = <String>{};
 
     const maxWritesPerBatch = 400;
     WriteBatch batch = _firestore.batch();
@@ -99,39 +128,104 @@ class StudentCsvImportService {
         final cleanedGroup = r.groupId.trim();
         final cleanedParentMobile = r.parentMobile.trim();
 
+        final nameKey = _nameClassSectionKey(cleanedName, cleanedClass, cleanedSection);
+
+        if (seenAdmissions.contains(cleanedAdmission)) {
+          results.add(StudentCsvImportRowResult(
+            rowNumber: r.rowNumber,
+            success: false,
+            message: 'Duplicate admissionNo in file',
+          ));
+          continue;
+        }
+
+        if (seenNameKeys.contains(nameKey)) {
+          results.add(StudentCsvImportRowResult(
+            rowNumber: r.rowNumber,
+            success: false,
+            message: 'Duplicate name/class/section in file',
+          ));
+          continue;
+        }
+
+        seenAdmissions.add(cleanedAdmission);
+        seenNameKeys.add(nameKey);
+
+        final existingIdForAdmission = admissionIndex[cleanedAdmission];
+        final indexExists = admissionIndex.containsKey(cleanedAdmission);
+        final existingIdForName = existingByNameKey[nameKey];
+
+        if (existingIdForAdmission != null &&
+            existingIdForName != null &&
+            existingIdForAdmission != existingIdForName) {
+          throw Exception('AdmissionNo and name/class/section refer to different students');
+        }
+
+        final requestedStudentId = r.studentId.trim();
+        String? targetStudentId;
+
+        if (requestedStudentId.isNotEmpty) {
+          if (existingIdForAdmission != null && existingIdForAdmission != requestedStudentId) {
+            throw Exception('AdmissionNo already used by another studentId ($existingIdForAdmission)');
+          }
+          if (existingIdForName != null && existingIdForName != requestedStudentId) {
+            throw Exception('Name/class/section already used by another studentId ($existingIdForName)');
+          }
+          if (!allowUpdates && existingById.containsKey(requestedStudentId)) {
+            results.add(StudentCsvImportRowResult(
+              rowNumber: r.rowNumber,
+              success: false,
+              message: 'Student already exists',
+            ));
+            continue;
+          }
+          targetStudentId = requestedStudentId;
+        } else if (existingIdForAdmission != null) {
+          if (!allowUpdates) {
+            results.add(StudentCsvImportRowResult(
+              rowNumber: r.rowNumber,
+              success: false,
+              message: 'AdmissionNo already exists',
+            ));
+            continue;
+          }
+          targetStudentId = existingIdForAdmission;
+        } else if (existingIdForName != null) {
+          if (!allowUpdates) {
+            results.add(StudentCsvImportRowResult(
+              rowNumber: r.rowNumber,
+              success: false,
+              message: 'Student already exists for name/class/section',
+            ));
+            continue;
+          }
+          targetStudentId = existingIdForName;
+        }
+
         // Resolve student document.
         DocumentReference<Map<String, dynamic>> studentRef;
         DocumentSnapshot<Map<String, dynamic>>? existingStudentSnap;
 
-        if (r.studentId.trim().isNotEmpty) {
-          studentRef = studentsCol.doc(r.studentId.trim());
-          existingStudentSnap = await studentRef.get();
-        } else {
-          final idx = await admissionIndexCol.doc(cleanedAdmission).get();
-          final existingStudentId = (idx.data()?['studentId'] as String?)?.trim();
-          if (existingStudentId != null && existingStudentId.isNotEmpty) {
-            studentRef = studentsCol.doc(existingStudentId);
+        if (targetStudentId != null) {
+          studentRef = studentsCol.doc(targetStudentId);
+          if (existingById.containsKey(targetStudentId)) {
             existingStudentSnap = await studentRef.get();
           } else {
-            studentRef = studentsCol.doc();
             existingStudentSnap = null;
           }
+        } else {
+          studentRef = studentsCol.doc();
+          existingStudentSnap = null;
         }
 
         final studentId = studentRef.id;
 
         // Admission number uniqueness / index handling.
-        final desiredIndexRef = admissionIndexCol.doc(cleanedAdmission);
-        final desiredIndexSnap = await desiredIndexRef.get();
-        if (desiredIndexSnap.exists) {
-          final mapped = (desiredIndexSnap.data()?['studentId'] as String?)?.trim();
-          if (mapped != null && mapped.isNotEmpty && mapped != studentId) {
-            throw Exception('AdmissionNo already used by another studentId ($mapped)');
-          }
-        }
-
         String? oldAdmission;
-        if (existingStudentSnap != null && existingStudentSnap.exists) {
+        if (existingById.containsKey(studentId)) {
+          final oldData = existingById[studentId] ?? const <String, Object?>{};
+          oldAdmission = (oldData['admissionNo'] as String?)?.trim();
+        } else if (existingStudentSnap != null && existingStudentSnap.exists) {
           final oldData = existingStudentSnap.data() ?? const <String, Object?>{};
           oldAdmission = (oldData['admissionNo'] as String?)?.trim();
         }
@@ -148,12 +242,13 @@ class StudentCsvImportService {
         }
 
         // Ensure desired index is set.
+        final desiredIndexRef = admissionIndexCol.doc(cleanedAdmission);
         batch.set(
           desiredIndexRef,
           {
             'studentId': studentId,
             'updatedAt': FieldValue.serverTimestamp(),
-            if (!desiredIndexSnap.exists) 'createdAt': FieldValue.serverTimestamp(),
+            if (!indexExists) 'createdAt': FieldValue.serverTimestamp(),
           },
           SetOptions(merge: true),
         );
@@ -257,4 +352,8 @@ class StudentCsvImportService {
       results: results,
     );
   }
+}
+
+String _nameClassSectionKey(String name, String classId, String sectionId) {
+  return '${name.trim().toLowerCase()}|${classId.trim().toLowerCase()}|${sectionId.trim().toLowerCase()}';
 }
