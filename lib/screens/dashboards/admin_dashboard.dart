@@ -32,6 +32,7 @@ class AdminDashboard extends ConsumerStatefulWidget {
 
 class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   int _selectedIndex = 0;
+  bool _autoSelected = false;
 
   static const _items = <_AdminNavItem>[
     _AdminNavItem('Setup Wizard', Icons.auto_fix_high, _AdminPage.setupWizard),
@@ -50,6 +51,15 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    final dashboardIndex = _items.indexWhere((item) => item.page == _AdminPage.dashboard);
+    if (dashboardIndex >= 0) {
+      _selectedIndex = dashboardIndex;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final appUserAsync = ref.watch(appUserProvider);
     final yearAsync = ref.watch(activeAcademicYearIdProvider);
@@ -64,6 +74,18 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
       data: (appUser) {
         final adminUid = authUserAsync.asData?.value?.uid;
         final isWide = MediaQuery.sizeOf(context).width >= 900;
+        if (!_autoSelected) {
+          final yearId = yearAsync.asData?.value;
+          final needsSetup = yearId == null || yearId.isEmpty;
+          if (needsSetup) {
+            final setupIndex = _items.indexWhere((item) => item.page == _AdminPage.setupWizard);
+            if (setupIndex >= 0) {
+              _selectedIndex = setupIndex;
+            }
+          }
+          _autoSelected = true;
+        }
+
         final selected = _items[_selectedIndex];
         final scheme = Theme.of(context).colorScheme;
 

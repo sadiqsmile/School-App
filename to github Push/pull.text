@@ -54,3 +54,8 @@ cmd /c npx firebase deploy --only hosting
 --------------------------------------------------------------------------
 flutter build web
 cmd /c npx firebase deploy --only hosting
+
+------------------------------------------------------------------------------------------
+admin -view only account
+ID: admin@admin.com
+ps: ADMINadmin

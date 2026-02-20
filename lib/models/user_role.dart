@@ -2,7 +2,8 @@ enum UserRole {
   parent,
   teacher,
   admin,
-  student;
+  student,
+  viewer;
 
   static UserRole? tryParse(String? value) {
     switch (value) {
@@ -14,6 +15,8 @@ enum UserRole {
         return UserRole.admin;
       case 'student':
         return UserRole.student;
+      case 'viewer':
+        return UserRole.viewer;
       default:
         return null;
     }
@@ -29,6 +32,8 @@ enum UserRole {
         return 'admin';
       case UserRole.student:
         return 'student';
+      case UserRole.viewer:
+        return 'viewer';
     }
   }
 }

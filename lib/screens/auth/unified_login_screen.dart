@@ -9,66 +9,51 @@ import 'dart:ui' as ui;
 import '../../providers/core_providers.dart';
 import '../../utils/app_animations.dart';
 
-enum LoginTab { parent, teacher, admin }
-
 class UnifiedLoginScreen extends ConsumerStatefulWidget {
-  const UnifiedLoginScreen({super.key, this.initialTab = LoginTab.parent});
-
-  final LoginTab initialTab;
+  const UnifiedLoginScreen({super.key});
 
   @override
   ConsumerState<UnifiedLoginScreen> createState() => _UnifiedLoginScreenState();
 }
 
 class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
-  late LoginTab _tab;
-
-  // Parent
-  final _parentFormKey = GlobalKey<FormState>();
-  final _parentPhoneController = TextEditingController();
-  final _parentPasswordController = TextEditingController();
-  bool _parentObscure = true;
-  bool _parentLoading = false;
-  String? _parentStatus;
-
-  // Teacher
-  final _teacherFormKey = GlobalKey<FormState>();
-  final _teacherEmailController = TextEditingController();
-  final _teacherPasswordController = TextEditingController();
-  bool _teacherObscure = true;
-  bool _teacherLoading = false;
-
-  // Admin
-  final _adminFormKey = GlobalKey<FormState>();
-  final _adminEmailController = TextEditingController();
-  final _adminPasswordController = TextEditingController();
-  bool _adminObscure = true;
-  bool _adminLoading = false;
-
-  bool get _anyLoading => _parentLoading || _teacherLoading || _adminLoading;
+  // Smart login form
+  final _formKey = GlobalKey<FormState>();
+  final _idController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+  bool _loading = false;
+  String? _statusMessage;
+  String _detectedLoginType = ''; // "Parent", "Staff", or ""
 
   @override
   void initState() {
     super.initState();
-    _tab = widget.initialTab;
+    // Listen to changes in ID field to detect login type
+    _idController.addListener(_updateDetectedLoginType);
   }
 
-  @override
-  void didUpdateWidget(covariant UnifiedLoginScreen oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialTab != widget.initialTab) {
-      setState(() => _tab = widget.initialTab);
+  void _updateDetectedLoginType() {
+    final input = _idController.text.trim();
+    String newType = '';
+    
+    if (input.isEmpty) {
+      newType = '';
+    } else if (_isMobileNumber(input)) {
+      newType = 'Parent';
+    } else if (_isEmail(input)) {
+      newType = 'Staff';
+    }
+    
+    if (newType != _detectedLoginType) {
+      setState(() => _detectedLoginType = newType);
     }
   }
 
   @override
   void dispose() {
-    _parentPhoneController.dispose();
-    _parentPasswordController.dispose();
-    _teacherEmailController.dispose();
-    _teacherPasswordController.dispose();
-    _adminEmailController.dispose();
-    _adminPasswordController.dispose();
+    _idController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -153,16 +138,43 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     return msg;
   }
 
-  Future<void> _signInParent() async {
-    if (!(_parentFormKey.currentState?.validate() ?? false)) return;
-    setState(() => _parentLoading = true);
+  // Smart detection: check if input is mobile number (10 digits) or email
+  bool _isMobileNumber(String input) {
+    final digits = input.replaceAll(RegExp(r'[^0-9]'), '');
+    return digits.length == 10 && input.trim().length <= 12;
+  }
+
+  bool _isEmail(String input) {
+    return input.trim().contains('@');
+  }
+
+  // Smart login handler
+  Future<void> _handleLogin() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    
+    final id = _idController.text.trim();
+    final password = _passwordController.text;
+
+    if (_isMobileNumber(id)) {
+      // Login as Parent
+      await _loginAsParent(id, password);
+    } else if (_isEmail(id)) {
+      // Login as Staff (Teacher/Admin/Viewer)
+      await _loginAsStaff(id, password);
+    } else {
+      _snack('Please enter a valid mobile number or email');
+    }
+  }
+
+  Future<void> _loginAsParent(String phoneNumber, String password) async {
+    setState(() => _loading = true);
     try {
       await ref.read(authServiceProvider).signInParent(
-            phoneNumber: _parentPhoneController.text.trim(),
-            password: _parentPasswordController.text,
+            phoneNumber: phoneNumber,
+            password: password,
             onStatus: (m) {
               if (!mounted) return;
-              setState(() => _parentStatus = m);
+              setState(() => _statusMessage = m);
             },
           );
       if (mounted) context.go('/');
@@ -172,42 +184,26 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
     } finally {
       if (mounted) {
         setState(() {
-          _parentLoading = false;
-          _parentStatus = null;
+          _loading = false;
+          _statusMessage = null;
         });
       }
     }
   }
 
-  Future<void> _signInTeacher() async {
-    if (!(_teacherFormKey.currentState?.validate() ?? false)) return;
-    setState(() => _teacherLoading = true);
+  Future<void> _loginAsStaff(String email, String password) async {
+    setState(() => _loading = true);
     try {
       await ref.read(authServiceProvider).signInEmail(
-            email: _teacherEmailController.text.trim(),
-            password: _teacherPasswordController.text,
+            email: email,
+            password: password,
           );
+      // Router will handle role-based redirection
     } catch (e) {
       if (!mounted) return;
       _snack(_prettyError(e));
     } finally {
-      if (mounted) setState(() => _teacherLoading = false);
-    }
-  }
-
-  Future<void> _signInAdmin() async {
-    if (!(_adminFormKey.currentState?.validate() ?? false)) return;
-    setState(() => _adminLoading = true);
-    try {
-      await ref.read(authServiceProvider).signInEmail(
-            email: _adminEmailController.text.trim(),
-            password: _adminPasswordController.text,
-          );
-    } catch (e) {
-      if (!mounted) return;
-      _snack(_prettyError(e));
-    } finally {
-      if (mounted) setState(() => _adminLoading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -293,84 +289,24 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                           duration: const Duration(milliseconds: 600),
                           child: _PremiumHeader(),
                         ),
-                        SizedBox(height: isDesktop ? 32 : 28),
+                        SizedBox(height: isDesktop ? 40 : 32),
 
-                        // iOS-style segmented control
+                        // Smart Login Form
                         AppAnimations.fadeInUp(
                           duration: const Duration(milliseconds: 700),
-                          child: _ModernRoleSelector(
-                            value: _tab,
-                            onChanged: _anyLoading ? null : (v) => setState(() => _tab = v),
+                          child: _SmartLoginForm(
+                            formKey: _formKey,
+                            idController: _idController,
+                            passwordController: _passwordController,
+                            loading: _loading,
+                            obscurePassword: _obscurePassword,
+                            statusMessage: _statusMessage,
+                            detectedLoginType: _detectedLoginType,
+                            onToggleObscure: () =>
+                                setState(() => _obscurePassword = !_obscurePassword),
+                            onSubmit: _handleLogin,
+                            onHelpTap: () => _showHelpDialog(context),
                           ),
-                        ),
-                        SizedBox(height: isDesktop ? 28 : 24),
-
-                        // Form switcher with smooth transitions (fixed height to prevent layout shifts)
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          switchInCurve: Curves.easeOutCubic,
-                          switchOutCurve: Curves.easeInCubic,
-                          layoutBuilder: (currentChild, previousChildren) {
-                            return Stack(
-                              alignment: Alignment.topCenter,
-                              children: <Widget>[
-                                ...previousChildren,
-                                if (currentChild != null) currentChild,
-                              ],
-                            );
-                          },
-                          transitionBuilder: (child, animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: child,
-                            );
-                          },
-                          child: switch (_tab) {
-                            LoginTab.parent => _PremiumParentForm(
-                                key: const ValueKey('parent'),
-                                formKey: _parentFormKey,
-                                phoneController: _parentPhoneController,
-                                passwordController: _parentPasswordController,
-                                loading: _parentLoading,
-                                obscure: _parentObscure,
-                                statusMessage: _parentStatus,
-                                themeColor: const Color(0xFF42A5F5),
-                                onToggleObscure: () =>
-                                    setState(() => _parentObscure = !_parentObscure),
-                                onSubmit: _signInParent,
-                                onHelpTap: () => _showHelpDialog(context),
-                              ),
-                            LoginTab.teacher => _PremiumEmailForm(
-                                key: const ValueKey('teacher'),
-                                title: 'Teacher Login',
-                                formKey: _teacherFormKey,
-                                emailController: _teacherEmailController,
-                                passwordController: _teacherPasswordController,
-                                loading: _teacherLoading,
-                                obscure: _teacherObscure,
-                                statusText: _teacherLoading ? 'Signing in…' : null,
-                                themeColor: const Color(0xFF66BB6A),
-                                onToggleObscure: () =>
-                                    setState(() => _teacherObscure = !_teacherObscure),
-                                onSubmit: _signInTeacher,
-                                onHelpTap: () => _showHelpDialog(context),
-                              ),
-                            LoginTab.admin => _PremiumEmailForm(
-                                key: const ValueKey('admin'),
-                                title: 'Admin Login',
-                                formKey: _adminFormKey,
-                                emailController: _adminEmailController,
-                                passwordController: _adminPasswordController,
-                                loading: _adminLoading,
-                                obscure: _adminObscure,
-                                statusText: _adminLoading ? 'Signing in…' : null,
-                                themeColor: const Color(0xFFFF9800),
-                                onToggleObscure: () =>
-                                    setState(() => _adminObscure = !_adminObscure),
-                                onSubmit: _signInAdmin,
-                                onHelpTap: () => _showHelpDialog(context),
-                              ),
-                          },
                         ),
                         const SizedBox(height: 24),
 
@@ -572,30 +508,22 @@ class _PremiumHeader extends StatelessWidget {
     final isCompact = media.size.width < 360;
     final isMobile = media.size.width < 600;
 
-    // Responsive logo sizing - 70-85px mobile, 90-110px web
-    final logoSize = isCompact ? 80.0 : (isMobile ? 85.0 : 105.0);
+    // Responsive logo sizing - 20% smaller than before
+    // Mobile: max 96px, Tablet: max 96px, Desktop: max 112px
+    final maxLogoSize = isCompact ? 88.0 : (isMobile ? 96.0 : 112.0);
     // Increased cache multiplier for HD rendering (2x for crisp display)
-    final cachePx = (logoSize * 2.0 * dpr).round();
+    final cachePx = (maxLogoSize * 2.5 * dpr).round();
 
     return Column(
       children: [
-        // Clean logo - no shape constraints, natural aspect ratio
+        // Logo with natural aspect ratio - shadow removed for cleaner look
         RepaintBoundary(
           child: Align(
             alignment: Alignment.center,
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: logoSize,
-                maxHeight: logoSize,
-              ),
-              decoration: BoxDecoration(
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                maxWidth: maxLogoSize,
+                maxHeight: maxLogoSize * 1.2, // Allow slightly taller for logo proportions
               ),
               child: Image.asset(
                 primaryLogoAssetPath,
@@ -617,10 +545,16 @@ class _PremiumHeader extends StatelessWidget {
                     cacheHeight: cachePx,
                     gaplessPlayback: true,
                     errorBuilder: (context, error, stackTrace) {
-                      return Icon(
-                        Icons.school_rounded,
-                        size: 64,
-                        color: const Color(0xFF42A5F5),
+                      return Container(
+                        constraints: BoxConstraints(
+                          maxWidth: maxLogoSize,
+                          maxHeight: maxLogoSize * 1.2,
+                        ),
+                        child: Icon(
+                          Icons.school_rounded,
+                          size: maxLogoSize * 0.6,
+                          color: const Color(0xFF42A5F5),
+                        ),
                       );
                     },
                   );
@@ -629,7 +563,7 @@ class _PremiumHeader extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         // 2-line title: HONGIRANA / School of Excellence
         Text(
           'HONGIRANA',
@@ -686,156 +620,6 @@ class _PremiumHeader extends StatelessWidget {
   }
 }
 
-/// Modern role selector with pill buttons and smooth animations
-class _ModernRoleSelector extends StatelessWidget {
-  final LoginTab value;
-  final ValueChanged<LoginTab>? onChanged;
-
-  const _ModernRoleSelector({
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isMobile = MediaQuery.of(context).size.width < 600;
-
-    Widget pill({
-      required LoginTab tab,
-      required String label,
-      required IconData icon,
-    }) {
-      final isSelected = value == tab;
-      final colors = _getRoleColors(tab);
-
-      return Expanded(
-        child: _HoverScale(
-          enabled: onChanged != null,
-          onTap: onChanged == null ? null : () => onChanged!(tab),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 240),
-            curve: Curves.easeOut,
-            decoration: BoxDecoration(
-              gradient: isSelected
-                  ? LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [colors['gradient1']!, colors['gradient2']!],
-                    )
-                  : null,
-              color: isSelected ? null : Colors.white.withValues(alpha: 0.65),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isSelected
-                    ? colors['border']!
-                    : Colors.white.withValues(alpha: 0.45),
-                width: isSelected ? 2 : 1,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: (isSelected ? colors['shadow']! : Colors.black)
-                      .withValues(alpha: isSelected ? 0.22 : 0.06),
-                  blurRadius: isSelected ? 22 : 10,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 8 : 10,
-                vertical: 10,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 20,
-                    color: isSelected ? Colors.white : const Color(0xFF5F6368),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color:
-                              isSelected ? Colors.white : const Color(0xFF5F6368),
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.4,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.6),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(6),
-        child: Row(
-          children: [
-            pill(tab: LoginTab.parent, label: 'Parent', icon: Icons.family_restroom_rounded),
-            const SizedBox(width: 6),
-            pill(tab: LoginTab.teacher, label: 'Teacher', icon: Icons.school_rounded),
-            const SizedBox(width: 6),
-            pill(tab: LoginTab.admin, label: 'Admin', icon: Icons.admin_panel_settings_rounded),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Map<String, Color> _getRoleColors(LoginTab tab) {
-    return switch (tab) {
-      LoginTab.parent => {
-          'gradient1': const Color(0xFF42A5F5), // Blue
-          'gradient2': const Color(0xFF1E88E5), 
-          'border': const Color(0xFF1976D2),
-          'shadow': const Color(0xFF42A5F5),
-          'input': const Color(0xFF42A5F5),
-        },
-      LoginTab.teacher => {
-          'gradient1': const Color(0xFF66BB6A), // Light Green
-          'gradient2': const Color(0xFF43A047),
-          'border': const Color(0xFF388E3C),
-          'shadow': const Color(0xFF66BB6A),
-          'input': const Color(0xFF66BB6A),
-        },
-      LoginTab.admin => {
-          'gradient1': const Color(0xFFFF9800), // Orange
-          'gradient2': const Color(0xFFF57C00),
-          'border': const Color(0xFFEF6C00),
-          'shadow': const Color(0xFFFF9800),
-          'input': const Color(0xFFFF9800),
-        },
-    };
-  }
-}
-
 /// Glassmorphic card wrapper with premium 2026 styling
 class _GlassmorphicCard extends StatelessWidget {
   final Widget child;
@@ -885,6 +669,280 @@ class _GlassmorphicCard extends StatelessWidget {
           child: child,
         ),
       ),
+    );
+  }
+}
+
+/// Smart Login Form - Auto-detects mobile (parent) or email (staff)
+class _SmartLoginForm extends StatelessWidget {
+  final GlobalKey<FormState> formKey;
+  final TextEditingController idController;
+  final TextEditingController passwordController;
+  final bool loading;
+  final bool obscurePassword;
+  final String? statusMessage;
+  final String detectedLoginType; // "Parent", "Staff", or ""
+  final VoidCallback onToggleObscure;
+  final VoidCallback onSubmit;
+  final VoidCallback onHelpTap;
+
+  const _SmartLoginForm({
+    super.key,
+    required this.formKey,
+    required this.idController,
+    required this.passwordController,
+    required this.loading,
+    required this.obscurePassword,
+    required this.statusMessage,
+    required this.detectedLoginType,
+    required this.onToggleObscure,
+    required this.onSubmit,
+    required this.onHelpTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    const themeColor = Color(0xFF42A5F5);
+    
+    // Build dynamic title based on detected login type
+    final titleText = detectedLoginType.isEmpty 
+        ? 'Sign In'
+        : '${detectedLoginType} Login';
+    
+    final subtitleText = detectedLoginType == 'Parent'
+        ? 'Secure access to your child\'s information'
+        : detectedLoginType == 'Staff'
+        ? 'Access your portal securely'
+        : 'Enter mobile number or email to continue';
+
+    return _GlassmorphicCard(
+      child: Form(
+        key: formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                  ) ?? const TextStyle(),
+              child: Text(
+                titleText,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 6),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 300),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: const Color(0xFF79747E),
+                  ) ?? const TextStyle(),
+              child: Text(
+                subtitleText,
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Smart ID field (mobile or email)
+            TextFormField(
+              controller: idController,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              autofillHints: const [AutofillHints.username],
+              decoration: _buildModernInputDecoration(
+                context,
+                label: 'Mobile Number or Email',
+                hint: '10-digit mobile or email',
+                icon: Icons.person_outline,
+                focusColor: themeColor,
+              ),
+              validator: (value) {
+                final v = (value ?? '').trim();
+                if (v.isEmpty) return 'Enter mobile number or email';
+                
+                // Check if it's a mobile number
+                final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                if (digits.length == 10 && v.length <= 12) {
+                  return null; // Valid mobile
+                }
+                
+                // Check if it's an email
+                if (v.contains('@')) {
+                  return null; // Valid email
+                }
+                
+                return 'Enter valid mobile number or email';
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // Password field
+            TextFormField(
+              controller: passwordController,
+              obscureText: obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => loading ? null : onSubmit(),
+              decoration: _buildModernInputDecoration(
+                context,
+                label: 'Password',
+                icon: Icons.lock_outline,
+                focusColor: themeColor,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    obscurePassword ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  onPressed: onToggleObscure,
+                ),
+              ),
+              validator: (value) {
+                if ((value ?? '').isEmpty) return 'Enter password';
+                if ((value ?? '').length < 4) return 'Password too short';
+                return null;
+              },
+            ),
+            const SizedBox(height: 18),
+
+            // Sign in button with gradient
+            _PremiumButton(
+              label: 'Sign in',
+              loading: loading,
+              gradient1: themeColor,
+              gradient2: _darkenColor(themeColor, 0.2),
+              onPressed: loading ? null : onSubmit,
+            ),
+
+            // Status message
+            if (loading && (statusMessage ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1F7FB8).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFF1F7FB8).withValues(alpha: 0.2),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation(Color(0xFF1F7FB8)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        statusMessage!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: const Color(0xFF1F7FB8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // Forgot password text button (only for email users)
+            TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password reset coming soon')),
+                );
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF1F7FB8),
+              ),
+              child: const Text('Forgot password?'),
+            ),
+
+            const SizedBox(height: 6),
+
+            // Help button
+            TextButton.icon(
+              onPressed: onHelpTap,
+              icon: const Icon(Icons.help_outline, size: 18),
+              label: const Text('Need help?'),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF1F7FB8),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _buildModernInputDecoration(
+    BuildContext context, {
+    required String label,
+    String? hint,
+    required IconData icon,
+    Widget? suffixIcon,
+    Color focusColor = const Color(0xFF42A5F5),
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
+      suffixIcon: suffixIcon,
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.85),
+      labelStyle: const TextStyle(
+        color: Color(0xFF616161),
+        fontSize: 14,
+      ),
+      hintStyle: TextStyle(
+        color: const Color(0xFF9E9E9E).withValues(alpha: 0.7),
+        fontSize: 14,
+      ),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
+          width: 1.5,
+        ),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(
+          color: focusColor,
+          width: 2.5,
+        ),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 1.5,
+        ),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(
+          color: Color(0xFFEF5350),
+          width: 2.5,
+        ),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
     );
   }
 }
@@ -992,488 +1050,6 @@ class _PremiumButton extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Premium parent login form with glassmorphic card
-class _PremiumParentForm extends StatelessWidget {
-  final GlobalKey<FormState> formKey;
-  final TextEditingController phoneController;
-  final TextEditingController passwordController;
-  final bool loading;
-  final bool obscure;
-  final String? statusMessage;
-  final Color themeColor;
-  final VoidCallback onToggleObscure;
-  final VoidCallback onSubmit;
-  final VoidCallback onHelpTap;
-
-  const _PremiumParentForm({
-    super.key,
-    required this.formKey,
-    required this.phoneController,
-    required this.passwordController,
-    required this.loading,
-    required this.obscure,
-    required this.statusMessage,
-    required this.themeColor,
-    required this.onToggleObscure,
-    required this.onSubmit,
-    required this.onHelpTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _GlassmorphicCard(
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Parent Login',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Secure access to your child\'s information',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF79747E),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-
-            // Phone field with +91 prefix
-            TextFormField(
-              controller: phoneController,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.telephoneNumber],
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-                LengthLimitingTextInputFormatter(10),
-              ],
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Mobile number',
-                hint: '10000 00000',
-                icon: Icons.phone_android,
-                prefix: '+91 ',
-                focusColor: themeColor,
-              ),
-              validator: (value) {
-                final v = (value ?? '').trim();
-                final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
-                if (digits.isEmpty) return 'Enter mobile number';
-                if (digits.length != 10) return 'Enter a valid 10-digit number';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-
-            // Password field
-            TextFormField(
-              controller: passwordController,
-              obscureText: obscure,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => loading ? null : onSubmit(),
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Password',
-                icon: Icons.lock_outline,
-                focusColor: themeColor,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscure ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                  ),
-                  onPressed: onToggleObscure,
-                ),
-              ),
-              validator: (value) {
-                if ((value ?? '').isEmpty) return 'Enter password';
-                if ((value ?? '').length < 4) return 'Password too short';
-                return null;
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // Sign in button with gradient
-            _PremiumButton(
-              label: 'Sign in',
-              loading: loading,
-              gradient1: themeColor,
-              gradient2: _darkenColor(themeColor, 0.2),
-              onPressed: loading ? null : onSubmit,
-            ),
-
-            // Parent status message
-            if (loading && (statusMessage ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F7FB8).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF1F7FB8).withValues(alpha: 0.2),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation(Color(0xFF1F7FB8)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        statusMessage!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF1F7FB8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            // Help button
-            TextButton.icon(
-              onPressed: onHelpTap,
-              icon: const Icon(Icons.help_outline, size: 18),
-              label: const Text('Need help?'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1F7FB8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _buildModernInputDecoration(
-    BuildContext context, {
-    required String label,
-    String? hint,
-    required IconData icon,
-    String? prefix,
-    Widget? suffixIcon,
-    Color focusColor = const Color(0xFF42A5F5),
-  }) {
-    return InputDecoration(
-      labelText: label,
-      hintText: hint,
-      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
-      prefix: prefix != null ? Text(
-        prefix,
-        style: const TextStyle(
-          color: Color(0xFF424242),
-          fontWeight: FontWeight.w600,
-        ),
-      ) : null,
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.85),
-      labelStyle: const TextStyle(
-        color: Color(0xFF616161),
-        fontSize: 14,
-      ),
-      hintStyle: TextStyle(
-        color: const Color(0xFF9E9E9E).withValues(alpha: 0.7),
-        fontSize: 14,
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: focusColor,
-          width: 2.5,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF5350),
-          width: 1.5,
-        ),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF5350),
-          width: 2.5,
-        ),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-    );
-  }
-}
-
-/// Premium email login form (for teacher and admin)
-class _PremiumEmailForm extends StatelessWidget {
-  final String title;
-  final GlobalKey<FormState> formKey;
-  final TextEditingController emailController;
-  final TextEditingController passwordController;
-  final bool loading;
-  final bool obscure;
-  final String? statusText;
-  final Color themeColor;
-  final VoidCallback onToggleObscure;
-  final VoidCallback onSubmit;
-  final VoidCallback onHelpTap;
-
-  const _PremiumEmailForm({
-    super.key,
-    required this.title,
-    required this.formKey,
-    required this.emailController,
-    required this.passwordController,
-    required this.loading,
-    required this.obscure,
-    required this.statusText,
-    required this.themeColor,
-    required this.onToggleObscure,
-    required this.onSubmit,
-    required this.onHelpTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _GlassmorphicCard(
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Access your portal securely',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF79747E),
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-
-            // Email field
-            TextFormField(
-              controller: emailController,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.email],
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Email address',
-                icon: Icons.alternate_email,
-                focusColor: themeColor,
-              ),
-              validator: (value) {
-                final v = (value ?? '').trim();
-                if (v.isEmpty) return 'Enter email';
-                if (!v.contains('@')) return 'Enter valid email';
-                return null;
-              },
-            ),
-            const SizedBox(height: 14),
-
-            // Password field
-            TextFormField(
-              controller: passwordController,
-              obscureText: obscure,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => loading ? null : onSubmit(),
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Password',
-                icon: Icons.lock_outline,
-                focusColor: themeColor,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscure ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                  ),
-                  onPressed: onToggleObscure,
-                ),
-              ),
-              validator: (value) {
-                if ((value ?? '').isEmpty) return 'Enter password';
-                if ((value ?? '').length < 6) return 'Password too short';
-                return null;
-              },
-            ),
-            const SizedBox(height: 18),
-
-            // Sign in button
-            _PremiumButton(
-              label: 'Sign in',
-              loading: loading,
-              gradient1: themeColor,
-              gradient2: _darkenColor(themeColor, 0.2),
-              onPressed: loading ? null : onSubmit,
-            ),
-
-            if (loading && (statusText ?? '').trim().isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F7FB8).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: const Color(0xFF1F7FB8).withValues(alpha: 0.18),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation(Color(0xFF1F7FB8)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        statusText!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF1F7FB8),
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 12),
-
-            // Forgot password text button
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Password reset coming soon')),
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1F7FB8),
-              ),
-              child: const Text('Forgot password?'),
-            ),
-
-            const SizedBox(height: 6),
-
-            // Help button
-            TextButton.icon(
-              onPressed: onHelpTap,
-              icon: const Icon(Icons.help_outline, size: 18),
-              label: const Text('Need help?'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1F7FB8),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _buildModernInputDecoration(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    Widget? suffixIcon,
-    Color focusColor = const Color(0xFF42A5F5),
-  }) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
-      suffixIcon: suffixIcon,
-      filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.85),
-      labelStyle: const TextStyle(
-        color: Color(0xFF616161),
-        fontSize: 14,
-      ),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: focusColor,
-          width: 2.5,
-        ),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF5350),
-          width: 1.5,
-        ),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(
-          color: Color(0xFFEF5350),
-          width: 2.5,
-        ),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
     );
   }
 }

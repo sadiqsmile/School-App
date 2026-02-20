@@ -9,6 +9,7 @@ import '../screens/auth/unified_login_screen.dart';
 import '../screens/dashboards/admin_dashboard.dart';
 import '../screens/dashboards/parent_dashboard.dart';
 import '../screens/dashboards/teacher_dashboard.dart';
+import '../screens/dashboards/viewer_dashboard.dart';
 import '../screens/splash/splash_screen.dart';
 import '../screens/parent/auth/parent_awaiting_approval_screen.dart';
 import '../screens/parent/auth/parent_force_password_change_screen.dart';
@@ -110,6 +111,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         UserRole.teacher => '/teacher',
         UserRole.admin => '/admin',
         UserRole.student => '/login',
+        UserRole.viewer => '/viewer',
       };
 
       // Keep users inside their dashboard namespace.
@@ -117,8 +119,8 @@ final goRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      // Admin can access other dashboards for troubleshooting if needed.
-      if (appUser.role == UserRole.admin) {
+      // Admin and Viewer can access other dashboards for troubleshooting/viewing if needed.
+      if (appUser.role == UserRole.admin || appUser.role == UserRole.viewer) {
         return null;
       }
 
@@ -132,20 +134,6 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (context, state) => const UnifiedLoginScreen(),
-        routes: [
-          GoRoute(
-            path: 'parent',
-            builder: (context, state) => const UnifiedLoginScreen(initialTab: LoginTab.parent),
-          ),
-          GoRoute(
-            path: 'teacher',
-            builder: (context, state) => const UnifiedLoginScreen(initialTab: LoginTab.teacher),
-          ),
-          GoRoute(
-            path: 'admin',
-            builder: (context, state) => const UnifiedLoginScreen(initialTab: LoginTab.admin),
-          ),
-        ],
       ),
       // Parent authentication flow screens
       GoRoute(
@@ -173,6 +161,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/admin',
         builder: (context, state) => const AdminDashboard(),
+      ),
+      GoRoute(
+        path: '/viewer',
+        builder: (context, state) => const ViewerDashboard(),
       ),
     ],
   );

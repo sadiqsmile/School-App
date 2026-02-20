@@ -60,6 +60,9 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         case UserRole.admin:
           context.go('/admin');
           break;
+        case UserRole.viewer:
+          context.go('/viewer');
+          break;
         case UserRole.student:
           // Handled above (student login is not supported).
           break;
