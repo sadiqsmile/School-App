@@ -34,6 +34,15 @@ class ParentCsvRow {
       'isActive': isActive,
     };
   }
+
+Map<String, dynamic> toJson() {
+  return {
+    "fatherName": displayName,
+    "fatherPhone": mobile,
+    "isActive": isActive ? "TRUE" : "FALSE",
+  };
+}
+
 }
 
 class ParentsCsvParseIssue {

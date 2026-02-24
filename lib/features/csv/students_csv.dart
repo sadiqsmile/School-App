@@ -11,8 +11,10 @@ class StudentCsvRow {
     required this.sectionId,
     required this.groupId,
     required this.parentMobile,
+    required this.bloodGroup,
     required this.isActive,
     required this.rowNumber,
+    
   });
 
   /// 1-based row number in the source CSV (including header row).
@@ -25,6 +27,7 @@ class StudentCsvRow {
   final String sectionId;
   final String groupId;
   final String parentMobile;
+  final String bloodGroup;
   final bool isActive;
 
   static const headers = <String>[
@@ -50,7 +53,25 @@ class StudentCsvRow {
       'isActive': isActive,
     };
   }
+
+Map<String, dynamic> toJson() {
+  return {
+    "admissionNumber": admissionNo,
+    "name": name,
+    "class": classId,
+    "section": sectionId,
+    "bloodGroup": bloodGroup,
+    "parentPhone": parentMobile,
+    "isActive": isActive ? "TRUE" : "FALSE",
+  };
 }
+
+}
+
+
+
+
+
 
 class StudentsCsvParseIssue {
   const StudentsCsvParseIssue({
@@ -227,6 +248,7 @@ StudentsCsvParseResult parseStudentsCsvText({required String csvText}) {
         sectionId: sectionId,
         groupId: groupId,
         parentMobile: parentMobile,
+        bloodGroup: row['bloodGroup'] ?? '',
         isActive: parseBool(isActiveRaw),
       ),
     );

@@ -48,3 +48,11 @@ app.*.map.json
 /android/key.properties
 *.jks
 *.keystore
+node_modules
+
+
+node_modules/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies

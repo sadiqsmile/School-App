@@ -48,12 +48,58 @@ ________________________________________________________________________
 
 Flutter analyze
 Flutter pub get
+
+________________________________________________________________________
+
+DEPLOY CLOUD FUNCTIONS & FIRESTORE RULES
+
+Deployment Commands:
+
+1. Deploy only Cloud Functions:
+   firebase deploy --only functions
+
+2. Deploy only Firestore Rules:
+   firebase deploy --only firestore:rules
+
+3. Deploy both Functions + Rules:
+   firebase deploy --only functions,firestore:rules
+
+4. Deploy everything (functions + rules + indexes):
+   firebase deploy
+
+________________________________________________________________________
+
+Quick Deploy Scripts:
+
+Deploy Functions (run from project root):
+   cd functions && npm install && cd .. && firebase deploy --only functions
+
+Deploy Rules only:
+   firebase deploy --only firestore:rules
+
+Check deployment status:
+   firebase functions:list
+   firebase firestore:indexes
+
+View function logs:
+   firebase functions:log
+
+________________________________________________________________________
 Flutter build web --release
 cmd /c npx firebase deploy --only hosting
 
 --------------------------------------------------------------------------
 flutter build web
 cmd /c npx firebase deploy --only hosting
+
+------------------------------------------------------------------------------------------
+Deploy Cloud Functions (Auto-Lock Attendance)
+
+cd functions
+npm install
+cd ..
+firebase deploy --only functions
+firebase functions:log
 
 ------------------------------------------------------------------------------------------
 admin -view only account

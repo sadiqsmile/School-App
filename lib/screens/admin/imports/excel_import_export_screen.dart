@@ -1,3 +1,7 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+
 import 'dart:convert';
 
 import 'package:csv/csv.dart';
@@ -257,6 +261,31 @@ class _ExcelImportFlowScreenState extends ConsumerState<ExcelImportFlowScreen> {
   List<StudentCsvRow> _studentRows = const [];
   List<ParentCsvRow> _parentRows = const [];
   List<TeacherCsvRow> _teacherRows = const [];
+
+Future<void> syncSchoolData() async {
+  try {
+    final response = await http.post(
+      Uri.parse(
+          "https://asia-south1-hongiranaapp.cloudfunctions.net/syncSchoolData"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "teachers": _teacherRows.map((e) => e.toJson()).toList(),
+        "students": _studentRows.map((e) => e.toJson()).toList(),
+        "parents": _parentRows.map((e) => e.toJson()).toList(),
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      _snack("Sync Completed Successfully");
+    } else {
+      _snack("Sync Failed");
+    }
+  } catch (e) {
+    _snack("Error during sync");
+  }
+}
+
+
 
   void _snack(String message) {
     if (!mounted) return;

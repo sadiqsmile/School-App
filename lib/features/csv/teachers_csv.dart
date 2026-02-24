@@ -42,6 +42,16 @@ class TeacherCsvRow {
       'isActive': isActive,
     };
   }
+Map<String, dynamic> toJson() {
+  return {
+    "teacherId": teacherUid,
+    "name": displayName,
+    "email": email,
+    "phone": phone,
+    "isActive": isActive ? "TRUE" : "FALSE",
+  };
+}
+
 }
 
 class TeachersCsvParseIssue {

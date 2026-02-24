@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/academic_year_service.dart';
 import '../services/academic_year_admin_service.dart';
 import '../services/attendance_service.dart';
+import '../services/attendance_service_enhanced.dart';
+import '../services/attendance_notification_service.dart';
+import '../services/attendance_report_service.dart';
+import '../services/attendance_analytics_service.dart';
+import '../services/advanced_analytics_service.dart';
 import '../services/admin_data_service.dart';
 import '../services/admin_service.dart';
 import '../services/auth_service.dart';
@@ -50,6 +55,23 @@ final academicYearAdminServiceProvider = Provider<AcademicYearAdminService>((ref
 
 final attendanceServiceProvider = Provider<AttendanceService>((ref) {
   return AttendanceService();
+});
+
+// Enhanced Attendance Services
+final attendanceServiceEnhancedProvider = Provider<AttendanceServiceEnhanced>((ref) {
+  return AttendanceServiceEnhanced();
+});
+
+final attendanceNotificationServiceProvider = Provider<AttendanceNotificationService>((ref) {
+  return AttendanceNotificationService();
+});
+
+final attendanceReportServiceProvider = Provider<AttendanceReportService>((ref) {
+  return AttendanceReportService();
+});
+
+final attendanceAnalyticsServiceProvider = Provider<AttendanceAnalyticsService>((ref) {
+  return AttendanceAnalyticsService();
 });
 
 final examServiceProvider = Provider<ExamService>((ref) {
@@ -134,4 +156,8 @@ final notificationLocalServiceProvider = Provider<NotificationLocalService>((ref
 
 final storageServiceProvider = Provider<StorageService>((ref) {
   return StorageService();
+});
+
+final advancedAnalyticsServiceProvider = Provider<AdvancedAnalyticsService>((ref) {
+  return AdvancedAnalyticsService();
 });
