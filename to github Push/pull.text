@@ -8,39 +8,23 @@ git branch -M main
 git remote add origin https://github.com/sadiqsmile/School-App.git
 git push -u origin main
 
-
-To pull________________
-First Clone once:
-
-git clone YOUR_GITHUB_REPO_LINK
-
-Then open that folder in VS Code.
-
-______________________________________________
-______________________________________________
-At home after changes:
-
+-------------to add -----------------------------------------------
+git status
 git add .
-git commit -m "updated"
-git push
-________________________________
+git commit -m "your message"
+git push origin main
 
 
-At school to get latest changes:
-git pull
-_________________________________________________
+-------to pull---------------------------------
+git pull origin main
 
-after changes in school
 
-git add .
-git commit -m "updated from school"
-git push
-______________________________________________________
-in home pull the data________________________________
-git pull
+-------------to clode from github-------------------------------
+git clone https://github.com/sadiqsmile/School-App.git
 
------------------------------------------------------
 
+
+---------------------------------------------------------------------------
 flutter devices
 flutter run -d (device name)
 
