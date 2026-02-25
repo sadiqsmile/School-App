@@ -21,6 +21,15 @@ git pull origin main
 
 -------------to clode from github-------------------------------
 git clone https://github.com/sadiqsmile/School-App.git
+==========================================================================
+to update to web:______________
+
+flutter build web
+firebase deploy
+firebase init hosting
+
+
+
 
 
 
