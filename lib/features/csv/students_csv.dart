@@ -70,9 +70,6 @@ Map<String, dynamic> toJson() {
 
 
 
-
-
-
 class StudentsCsvParseIssue {
   const StudentsCsvParseIssue({
     required this.rowNumber,
@@ -248,7 +245,7 @@ StudentsCsvParseResult parseStudentsCsvText({required String csvText}) {
         sectionId: sectionId,
         groupId: groupId,
         parentMobile: parentMobile,
-        bloodGroup: row['bloodGroup'] ?? '',
+        bloodGroup: cell(row, 'bloodGroup'),
         isActive: parseBool(isActiveRaw),
       ),
     );
