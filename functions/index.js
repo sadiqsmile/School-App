@@ -901,6 +901,9 @@ for (const parent of parents) {
      // ==========================
 // STUDENTS SYNC (PRO VERSION WITH PARENT LINKING)
 // ==========================
+let addedCount = 0;
+let updatedCount = 0;
+
 for (const student of students) {
 
   const admissionNumber = student.admissionNumber
@@ -982,6 +985,7 @@ for (const student of students) {
     }
 
     await doc.ref.update(updateData);
+    updatedCount++;
 
   } else {
 
@@ -1015,9 +1019,14 @@ for (const student of students) {
         { merge: true }
       );
     });
+    addedCount++;
   }
 }
-      return res.status(200).json({ success: true });
+      return res.status(200).json({
+        success: true,
+        added: addedCount,
+        updated: updatedCount
+      });
 
     } catch (error) {
       console.error("Sync Error:", error);

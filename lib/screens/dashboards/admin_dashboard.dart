@@ -22,6 +22,9 @@ import '../admin/homework/admin_homework_maintenance_screen.dart';
 import '../../widgets/loading_view.dart';
 import '../../widgets/notification_token_registration_runner.dart';
 import '../shared/notifications/notification_center_screen.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
 
 class AdminDashboard extends ConsumerStatefulWidget {
   const AdminDashboard({super.key});
@@ -205,6 +208,52 @@ class _AdminContent extends ConsumerWidget {
   final ValueChanged<_AdminPage> onNavigate;
   final String? activeYearId;
 
+  Future<void> _syncSchoolData(BuildContext context) async {
+    try {
+      final response = await http.post(
+        Uri.parse('https://asia-south1-hongiranaapp.cloudfunctions.net/syncSchoolData'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'secret': 'ADMIN_SYNC_2026'}),
+      ).timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final added = data['added'] ?? 0;
+        final updated = data['updated'] ?? 0;
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sync Complete: $added Added, $updated Updated'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✗ Sync failed: ${response.statusCode}'),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✗ Error: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (page == _AdminPage.setupWizard) {
@@ -278,14 +327,26 @@ class _AdminContent extends ConsumerWidget {
                       Row(
                         children: [
                           Container(
-                            width: 60,
-                            height: 60,
+                            width: 70,
+                            height: 70,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white.withValues(alpha: 0.25),
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
+                              color: Colors.white,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.15),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                            child: Icon(Icons.admin_panel_settings, color: Colors.white, size: 28),
+                            padding: const EdgeInsets.all(8),
+                            child: ClipOval(
+                              child: Image.asset(
+                                'assets/images/school_logo.png',
+                                fit: BoxFit.contain,
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -455,6 +516,23 @@ class _AdminContent extends ConsumerWidget {
                   onTap: () => onNavigate(_AdminPage.exams),
                 ),
               ],
+            ),
+          ),
+          // Auto Sync Google Sheet Button
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            sliver: SliverToBoxAdapter(
+              child: ElevatedButton.icon(
+                onPressed: () => _syncSchoolData(context),
+                icon: const Icon(Icons.sync),
+                label: const Text('Auto Sync Google Sheet'),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  backgroundColor: scheme.primary.withValues(alpha: 0.1),
+                  foregroundColor: scheme.primary,
+                  side: BorderSide(color: scheme.primary, width: 1.5),
+                ),
+              ),
             ),
           ),
           // Recent Actions Section
