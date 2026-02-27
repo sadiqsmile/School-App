@@ -578,7 +578,7 @@ class _EnhancedAttendanceMarkingScreenState
                             : AttendanceStatus.absent;
                       });
                     },
-                    activeColor: Colors.green,
+                    activeThumbColor: Colors.green,
                     inactiveThumbColor: Colors.red,
                   ),
           ),

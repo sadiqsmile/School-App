@@ -1,13 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'dart:ui' as ui;
 
 import '../../providers/core_providers.dart';
-import '../../utils/app_animations.dart';
 
 class UnifiedLoginScreen extends ConsumerStatefulWidget {
   const UnifiedLoginScreen({super.key});
@@ -23,6 +19,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _loading = false;
+  bool _rememberMe = false;
   String? _statusMessage;
   String _detectedLoginType = ''; // "Parent", "Staff", or ""
 
@@ -211,90 +208,92 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final screenWidth = media.size.width;
-    final isDesktop = screenWidth >= 1000;
-    final isTablet = screenWidth >= 600 && screenWidth < 1000;
 
-    // Responsive max width
-    final maxContentWidth = isDesktop ? 520.0 : (isTablet ? 500.0 : 420.0);
-    final horizontalPadding = isDesktop ? 32.0 : (isTablet ? 24.0 : 20.0);
+    // Design requirement: card responsive width, max 420 on web/desktop.
+    final maxCardWidth = 420.0;
+    final horizontalPadding = screenWidth >= 600 ? 28.0 : 20.0;
+
+    const bg1 = Color(0xFF6D28D9); // Purple
+    const bg2 = Color(0xFF2563EB); // Blue
+    const bg3 = Color(0xFF0EA5E9); // Sky
+
+    final focusColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
+        foregroundColor: Colors.white,
       ),
-      backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Premium gradient background (light blue → violet → white)
+          // Full-screen curved gradient background
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFFE3F2FD), // Light blue
-                  const Color(0xFFF3E5F5), // Light violet
-                  const Color(0xFFFAFAFA), // Near white
-                  Colors.white,
-                ],
-                stops: const [0.0, 0.3, 0.7, 1.0],
+                colors: [bg1, bg2, bg3],
+                stops: [0.0, 0.55, 1.0],
               ),
             ),
           ),
 
-          // Animated decorative blobs for premium feel
-          _AnimatedGradientBackground(),
-          
-          Positioned(
-            top: -120,
-            right: -120,
-            child: _BlurBlob(size: 350, color: const Color(0xFF64B5F6).withValues(alpha: 0.20)),
+          // Soft wave at the bottom (two layers for depth)
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ClipPath(
+              clipper: _BottomWaveClipper(amplitude: 26, shift: 0.0),
+              child: Container(
+                height: 220,
+                color: Colors.white.withValues(alpha: 0.16),
+              ),
+            ),
           ),
-          Positioned(
-            bottom: -100,
-            left: -100,
-            child: _BlurBlob(size: 320, color: const Color(0xFFAB47BC).withValues(alpha: 0.18)),
-          ),
-          Positioned(
-            top: 200,
-            left: -80,
-            child: _BlurBlob(size: 280, color: const Color(0xFF42A5F5).withValues(alpha: 0.15)),
-          ),
-          Positioned(
-            bottom: 180,
-            right: -100,
-            child: _BlurBlob(size: 300, color: const Color(0xFF9575CD).withValues(alpha: 0.15)),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: ClipPath(
+              clipper: _BottomWaveClipper(amplitude: 18, shift: 30.0),
+              child: Container(
+                height: 170,
+                color: Colors.white.withValues(alpha: 0.10),
+              ),
+            ),
           ),
 
-          // Main content
           SafeArea(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: horizontalPadding,
-                  vertical: isDesktop ? 32 : 24,
+            child: Center(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
                 ),
-                child: Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: 24,
+                  ),
                   child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxContentWidth),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Premium header with glass logo container
-                        AppAnimations.fadeInUp(
-                          duration: const Duration(milliseconds: 600),
-                          child: _PremiumHeader(),
-                        ),
-                        SizedBox(height: isDesktop ? 40 : 32),
-
-                        // Smart Login Form
-                        AppAnimations.fadeInUp(
-                          duration: const Duration(milliseconds: 700),
-                          child: _SmartLoginForm(
+                    constraints: BoxConstraints(maxWidth: maxCardWidth),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      duration: const Duration(milliseconds: 720),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, t, child) {
+                        return Opacity(
+                          opacity: t,
+                          child: Transform.translate(
+                            offset: Offset(0, (1 - t) * 22),
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _SmartLoginForm(
                             formKey: _formKey,
                             idController: _idController,
                             passwordController: _passwordController,
@@ -302,17 +301,20 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                             obscurePassword: _obscurePassword,
                             statusMessage: _statusMessage,
                             detectedLoginType: _detectedLoginType,
+                            rememberMe: _rememberMe,
+                            onRememberMeChanged: (v) =>
+                                setState(() => _rememberMe = v ?? false),
+                            focusColor: focusColor,
+                            buttonGradient: const [bg2, bg1],
                             onToggleObscure: () =>
                                 setState(() => _obscurePassword = !_obscurePassword),
                             onSubmit: _handleLogin,
                             onHelpTap: () => _showHelpDialog(context),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Footer
-                        _PremiumFooter(),
-                      ],
+                          const SizedBox(height: 18),
+                          _PremiumFooter(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -325,261 +327,46 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
   }
 }
 
-// ===== PREMIUM 2026 WIDGETS =====
+/// Wave-style bottom clipper used for the curved gradient login background.
+class _BottomWaveClipper extends CustomClipper<Path> {
+  _BottomWaveClipper({required this.amplitude, required this.shift});
 
-/// Animated gradient background with slow moving effect
-class _AnimatedGradientBackground extends StatefulWidget {
-  @override
-  State<_AnimatedGradientBackground> createState() =>
-      _AnimatedGradientBackgroundState();
-}
-
-class _AnimatedGradientBackgroundState extends State<_AnimatedGradientBackground>
-    with TickerProviderStateMixin {
-  late AnimationController _controller;
+  final double amplitude;
+  final double shift;
 
   @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(seconds: 20),
-      vsync: this,
-    )..repeat();
-  }
+  Path getClip(Size size) {
+    final path = Path();
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+    // Start from top-left
+    path.lineTo(0, 0);
 
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        final offset = _controller.value;
-        return Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment(offset * 2 - 1, -1),
-              end: Alignment(-offset * 2 + 1, 1),
-              colors: [
-                const Color(0xFF1F7FB8).withValues(alpha: 0.10),
-                const Color(0xFF26A69A).withValues(alpha: 0.08),
-                const Color(0xFF8B5CF6).withValues(alpha: 0.06),
-                const Color(0xFF0EA5E9).withValues(alpha: 0.06),
-              ],
-            ),
-          ),
-        );
-      },
+    // Draw a smooth wave across the top edge of the clipped container.
+    final baseY = amplitude + 18;
+    path.quadraticBezierTo(
+      size.width * 0.20,
+      baseY + shift,
+      size.width * 0.50,
+      baseY,
     );
-  }
-}
-
-class _HoverScale extends StatefulWidget {
-  const _HoverScale({required this.child, this.enabled = true, this.onTap});
-
-  final Widget child;
-  final bool enabled;
-  final VoidCallback? onTap;
-
-  @override
-  State<_HoverScale> createState() => _HoverScaleState();
-}
-
-class _HoverScaleState extends State<_HoverScale> {
-  bool _hovering = false;
-
-  bool get _supportsHover {
-    if (kIsWeb) return true;
-    switch (defaultTargetPlatform) {
-      case TargetPlatform.macOS:
-      case TargetPlatform.windows:
-      case TargetPlatform.linux:
-        return true;
-      case TargetPlatform.android:
-      case TargetPlatform.iOS:
-      case TargetPlatform.fuchsia:
-        return false;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final enableHover = widget.enabled && _supportsHover;
-
-    Widget content = AnimatedScale(
-      scale: (_hovering && enableHover) ? 1.015 : 1.0,
-      duration: const Duration(milliseconds: 140),
-      curve: Curves.easeOut,
-      child: widget.child,
+    path.quadraticBezierTo(
+      size.width * 0.80,
+      baseY - shift,
+      size.width,
+      baseY + 8,
     );
 
-    if (enableHover) {
-      content = MouseRegion(
-        onEnter: (_) => setState(() => _hovering = true),
-        onExit: (_) => setState(() => _hovering = false),
-        child: content,
-      );
-    }
+    // Close shape down to bottom
+    path.lineTo(size.width, size.height);
+    path.lineTo(0, size.height);
+    path.close();
 
-    if (widget.onTap != null) {
-      content = GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        child: content,
-      );
-    }
-
-    return content;
-  }
-}
-
-/// Floating blur blob for glassmorphic effect
-class _BlurBlob extends StatefulWidget {
-  final double size;
-  final Color color;
-
-  const _BlurBlob({required this.size, required this.color});
-
-  @override
-  State<_BlurBlob> createState() => _BlurBlobState();
-}
-
-class _BlurBlobState extends State<_BlurBlob> with TickerProviderStateMixin {
-  late AnimationController _floatController;
-
-  @override
-  void initState() {
-    super.initState();
-    _floatController = AnimationController(
-      duration: const Duration(seconds: 8),
-      vsync: this,
-    )..repeat(reverse: true);
+    return path;
   }
 
   @override
-  void dispose() {
-    _floatController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _floatController,
-      builder: (context, child) {
-        final offset = Tween<Offset>(
-          begin: const Offset(0, 0),
-          end: const Offset(0, 30),
-        ).evaluate(_floatController);
-
-        return Transform.translate(
-          offset: offset,
-          child: BackdropFilter(
-            filter: ui.ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-            child: Container(
-              width: widget.size,
-              height: widget.size,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.color,
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// Premium header with glassmorphic logo container
-class _PremiumHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    // Branding logo paths
-   
-    final media = MediaQuery.of(context);
-    final dpr = media.devicePixelRatio;
-    final isCompact = media.size.width < 360;
-    final isMobile = media.size.width < 600;
-
-    // Responsive logo sizing - 20% smaller than before
-    // Mobile: max 96px, Tablet: max 96px, Desktop: max 112px
-    final maxLogoSize = isCompact ? 88.0 : (isMobile ? 96.0 : 112.0);
-    // Increased cache multiplier for HD rendering (2x for crisp display)
-    final cachePx = (maxLogoSize * 2.5 * dpr).round();
-
-    
-Container(
-  width: 100,
-  height: 100,
-  decoration: BoxDecoration(
-    shape: BoxShape.circle,
-    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-  ),
-  child: Icon(
-    Icons.school_rounded,
-    size: 50,
-    color: Theme.of(context).colorScheme.primary,
-  ),
-),
-
-  }
-}
-
-/// Glassmorphic card wrapper with premium 2026 styling
-class _GlassmorphicCard extends StatelessWidget {
-  final Widget child;
-
-  const _GlassmorphicCard({required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(28),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(32),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.85),
-                Colors.white.withValues(alpha: 0.75),
-              ],
-            ),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.10),
-                blurRadius: 40,
-                offset: const Offset(0, 15),
-              ),
-              BoxShadow(
-                color: const Color(0xFF42A5F5).withValues(alpha: 0.08),
-                blurRadius: 30,
-                offset: const Offset(0, 8),
-              ),
-              BoxShadow(
-                color: Colors.white.withValues(alpha: 0.7),
-                blurRadius: 10,
-                offset: const Offset(0, -5),
-              ),
-            ],
-          ),
-          child: child,
-        ),
-      ),
-    );
+  bool shouldReclip(covariant _BottomWaveClipper oldClipper) {
+    return oldClipper.amplitude != amplitude || oldClipper.shift != shift;
   }
 }
 
@@ -592,12 +379,15 @@ class _SmartLoginForm extends StatelessWidget {
   final bool obscurePassword;
   final String? statusMessage;
   final String detectedLoginType; // "Parent", "Staff", or ""
+  final bool rememberMe;
+  final ValueChanged<bool?> onRememberMeChanged;
+  final Color focusColor;
+  final List<Color> buttonGradient;
   final VoidCallback onToggleObscure;
   final VoidCallback onSubmit;
   final VoidCallback onHelpTap;
 
   const _SmartLoginForm({
-    super.key,
     required this.formKey,
     required this.idController,
     required this.passwordController,
@@ -605,6 +395,10 @@ class _SmartLoginForm extends StatelessWidget {
     required this.obscurePassword,
     required this.statusMessage,
     required this.detectedLoginType,
+    required this.rememberMe,
+    required this.onRememberMeChanged,
+    required this.focusColor,
+    required this.buttonGradient,
     required this.onToggleObscure,
     required this.onSubmit,
     required this.onHelpTap,
@@ -612,183 +406,196 @@ class _SmartLoginForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const themeColor = Color(0xFF42A5F5);
-    
-    // Build dynamic title based on detected login type
-    final titleText = detectedLoginType.isEmpty 
-        ? 'Sign In'
-        : '${detectedLoginType} Login';
-    
+    // Build dynamic hint based on detected login type (UI-only).
     final subtitleText = detectedLoginType == 'Parent'
-        ? 'Secure access to your child\'s information'
+        ? 'Parent portal access'
         : detectedLoginType == 'Staff'
-        ? 'Access your portal securely'
-        : 'Enter mobile number or email to continue';
+            ? 'Staff portal access'
+            : 'Use mobile number (parent) or email (staff)';
 
-    return _GlassmorphicCard(
-      child: Form(
-        key: formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.3,
-                  ) ?? const TextStyle(),
-              child: Text(
-                titleText,
+    return Material(
+      color: Colors.white,
+      elevation: 18,
+      shadowColor: Colors.black.withValues(alpha: 0.22),
+      borderRadius: BorderRadius.circular(28),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Text(
+                'Log In',
                 textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.6,
+                      color: const Color(0xFF0F172A),
+                    ),
               ),
-            ),
-            const SizedBox(height: 6),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 300),
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF79747E),
-                  ) ?? const TextStyle(),
-              child: Text(
+              const SizedBox(height: 6),
+              Text(
                 subtitleText,
                 textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
               ),
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 18),
 
-            // Smart ID field (mobile or email)
-            TextFormField(
-              controller: idController,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              autofillHints: const [AutofillHints.username],
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Mobile Number or Email',
-                hint: '10-digit mobile or email',
-                icon: Icons.person_outline,
-                focusColor: themeColor,
-              ),
-              validator: (value) {
-                final v = (value ?? '').trim();
-                if (v.isEmpty) return 'Enter mobile number or email';
-                
-                // Check if it's a mobile number
-                final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
-                if (digits.length == 10 && v.length <= 12) {
-                  return null; // Valid mobile
-                }
-                
-                // Check if it's an email
-                if (v.contains('@')) {
-                  return null; // Valid email
-                }
-                
-                return 'Enter valid mobile number or email';
-              },
-            ),
-            const SizedBox(height: 14),
-
-            // Password field
-            TextFormField(
-              controller: passwordController,
-              obscureText: obscurePassword,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => loading ? null : onSubmit(),
-              decoration: _buildModernInputDecoration(
-                context,
-                label: 'Password',
-                icon: Icons.lock_outline,
-                focusColor: themeColor,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    obscurePassword ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                  ),
-                  onPressed: onToggleObscure,
+              // ID field (mobile/email)
+              TextFormField(
+                controller: idController,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.username],
+                decoration: _buildModernInputDecoration(
+                  context,
+                  label: 'Mobile Number or Email',
+                  hint: '10-digit mobile or email',
+                  icon: Icons.person_outline,
+                  focusColor: focusColor,
                 ),
+                validator: (value) {
+                  final v = (value ?? '').trim();
+                  if (v.isEmpty) return 'Enter mobile number or email';
+
+                  final digits = v.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (digits.length == 10 && v.length <= 12) return null;
+                  if (v.contains('@')) return null;
+
+                  return 'Enter valid mobile number or email';
+                },
               ),
-              validator: (value) {
-                if ((value ?? '').isEmpty) return 'Enter password';
-                if ((value ?? '').length < 4) return 'Password too short';
-                return null;
-              },
-            ),
-            const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
-            // Sign in button with gradient
-            _PremiumButton(
-              label: 'Sign in',
-              loading: loading,
-              gradient1: themeColor,
-              gradient2: _darkenColor(themeColor, 0.2),
-              onPressed: loading ? null : onSubmit,
-            ),
+              // Password field
+              TextFormField(
+                controller: passwordController,
+                obscureText: obscurePassword,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => loading ? null : onSubmit(),
+                decoration: _buildModernInputDecoration(
+                  context,
+                  label: 'Password',
+                  icon: Icons.lock_outline,
+                  focusColor: focusColor,
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
+                      size: 20,
+                    ),
+                    onPressed: onToggleObscure,
+                  ),
+                ),
+                validator: (value) {
+                  if ((value ?? '').isEmpty) return 'Enter password';
+                  if ((value ?? '').length < 4) return 'Password too short';
+                  return null;
+                },
+              ),
 
-            // Status message
-            if (loading && (statusMessage ?? '').trim().isNotEmpty) ...[
+              const SizedBox(height: 10),
+
+              // Remember Me + Help row
+              Row(
+                children: [
+                  Checkbox(
+                    value: rememberMe,
+                    onChanged: onRememberMeChanged,
+                    activeColor: focusColor,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  const SizedBox(width: 4),
+                  const Text(
+                    'Remember Me',
+                    style: TextStyle(
+                      color: Color(0xFF334155),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: onHelpTap,
+                    style: TextButton.styleFrom(
+                      foregroundColor: focusColor,
+                      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    child: const Text('Need help?'),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1F7FB8).withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: const Color(0xFF1F7FB8).withValues(alpha: 0.2),
+
+              // Login button
+              _GradientLoginButton(
+                label: 'Log In',
+                loading: loading,
+                onPressed: loading ? null : onSubmit,
+                gradient: buttonGradient,
+              ),
+
+              // Status message
+              if (loading && (statusMessage ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation(focusColor),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          statusMessage!,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: const Color(0xFF334155),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                child: Row(
-                  children: [
-                    const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation(Color(0xFF1F7FB8)),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        statusMessage!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: const Color(0xFF1F7FB8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
+              ],
+
+              const SizedBox(height: 6),
+
+              // Forgot password (kept)
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password reset coming soon')),
+                  );
+                },
+                child: const Text('Forgot password?'),
               ),
             ],
-
-            const SizedBox(height: 12),
-
-            // Forgot password text button (only for email users)
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Password reset coming soon')),
-                );
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1F7FB8),
-              ),
-              child: const Text('Forgot password?'),
-            ),
-
-            const SizedBox(height: 6),
-
-            // Help button
-            TextButton.icon(
-              onPressed: onHelpTap,
-              icon: const Icon(Icons.help_outline, size: 18),
-              label: const Text('Need help?'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF1F7FB8),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -800,161 +607,124 @@ class _SmartLoginForm extends StatelessWidget {
     String? hint,
     required IconData icon,
     Widget? suffixIcon,
-    Color focusColor = const Color(0xFF42A5F5),
+    Color focusColor = const Color(0xFF2563EB),
   }) {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF79747E)),
+      prefixIcon: Icon(icon, size: 22, color: const Color(0xFF64748B)),
       suffixIcon: suffixIcon,
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.85),
+      fillColor: const Color(0xFFF3F4F6),
       labelStyle: const TextStyle(
-        color: Color(0xFF616161),
+        color: Color(0xFF475569),
         fontSize: 14,
       ),
       hintStyle: TextStyle(
-        color: const Color(0xFF9E9E9E).withValues(alpha: 0.7),
+        color: const Color(0xFF94A3B8),
         fontSize: 14,
       ),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide.none,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: const Color(0xFFE0E0E0).withValues(alpha: 0.8),
-          width: 1.5,
-        ),
+        borderRadius: BorderRadius.circular(20),
+        borderSide: BorderSide.none,
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         borderSide: BorderSide(
           color: focusColor,
-          width: 2.5,
+          width: 2.2,
         ),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(
           color: Color(0xFFEF5350),
           width: 1.5,
         ),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         borderSide: const BorderSide(
           color: Color(0xFFEF5350),
-          width: 2.5,
+          width: 2.2,
         ),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
     );
   }
 }
 
-/// Premium button with gradient and loading state (2026 style)
-class _PremiumButton extends StatelessWidget {
-  final String label;
-  final bool loading;
-  final VoidCallback? onPressed;
-  final Color gradient1;
-  final Color gradient2;
-
-  const _PremiumButton({
+/// Gradient login button matching the premium curved SaaS style.
+class _GradientLoginButton extends StatelessWidget {
+  const _GradientLoginButton({
     required this.label,
     required this.loading,
     required this.onPressed,
-    this.gradient1 = const Color(0xFF42A5F5),
-    this.gradient2 = const Color(0xFF1976D2),
+    required this.gradient,
   });
+
+  final String label;
+  final bool loading;
+  final VoidCallback? onPressed;
+  final List<Color> gradient;
 
   @override
   Widget build(BuildContext context) {
-    final enabled = onPressed != null && !loading;
-
-    return _HoverScale(
-      enabled: enabled,
-      onTap: onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        height: 56,
+    return SizedBox(
+      height: 52,
+      child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: enabled
-                ? [gradient1, gradient2]
-                : [
-                    gradient1.withValues(alpha: 0.50),
-                    gradient2.withValues(alpha: 0.50),
-                  ],
+            colors: onPressed == null
+                ? [
+                    gradient[0].withValues(alpha: 0.55),
+                    gradient[1].withValues(alpha: 0.55),
+                  ]
+                : gradient,
           ),
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: enabled
-              ? [
-                  BoxShadow(
-                    color: gradient1.withValues(alpha: 0.20),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                    spreadRadius: 0,
-                  ),
-                  BoxShadow(
-                    color: gradient2.withValues(alpha: 0.15),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                    spreadRadius: 0,
-                  ),
-                ]
-              : [
-                  BoxShadow(
-                    color: gradient1.withValues(alpha: 0.10),
-                    blurRadius: 6,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.first.withValues(alpha: 0.28),
+              blurRadius: 18,
+              offset: const Offset(0, 10),
+            ),
+          ],
         ),
         child: Material(
-          type: MaterialType.transparency,
+          color: Colors.transparent,
           child: InkWell(
             onTap: onPressed,
-            borderRadius: BorderRadius.circular(16),
-            splashColor: Colors.white.withValues(alpha: 0.3),
-            highlightColor: Colors.white.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(30),
             child: Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  if (loading) ...[
-                    SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3,
-                        valueColor: AlwaysStoppedAnimation(
-                          Colors.white.withValues(alpha: 0.98),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 220),
+                child: loading
+                    ? const SizedBox(
+                        key: ValueKey('loading'),
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.6,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
+                      )
+                    : Text(
+                        label,
+                        key: const ValueKey('label'),
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.4,
+                            ),
                       ),
-                    ),
-                    const SizedBox(width: 14),
-                  ] else
-                    const Icon(Icons.login_rounded, color: Colors.white, size: 22),
-                  const SizedBox(width: 12),
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          letterSpacing: 0.5,
-                        ),
-                  ),
-                ],
               ),
             ),
           ),
@@ -1015,15 +785,4 @@ class _PremiumFooter extends StatelessWidget {
       ],
     );
   }
-}
-
-/// Helper to darken a color by a factor (0.0 - 1.0)
-Color _darkenColor(Color color, double factor) {
-  assert(factor >= 0 && factor <= 1);
-  
-  final int red = (color.red * (1 - factor)).round();
-  final int green = (color.green * (1 - factor)).round();
-  final int blue = (color.blue * (1 - factor)).round();
-  
-  return Color.fromRGBO(red, green, blue, color.opacity);
 }

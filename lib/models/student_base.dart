@@ -17,6 +17,14 @@ class StudentBase {
   final String? sectionId;
   final String? groupId;
 
+  /// Backwards compatible alias used by older UI screens.
+  String get name => fullName;
+
+  /// Backwards compatible alias used by older UI screens.
+  ///
+  /// In this app, roll number is stored as `admissionNo` for most data sources.
+  String? get rollNumber => admissionNo;
+
   factory StudentBase.fromMap(String id, Map<String, Object?> map) {
     // Current Firestore spec uses `name`, but older docs/screens used `fullName`.
     // Support both to avoid breaking existing data.

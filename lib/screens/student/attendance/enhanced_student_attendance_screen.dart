@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import '../../../models/app_user.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../services/attendance_service_enhanced.dart';
 import '../../../services/attendance_analytics_service.dart';

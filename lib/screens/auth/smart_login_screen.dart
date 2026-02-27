@@ -3,11 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:go_router/go_router.dart';
 import 'dart:ui' as ui;
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../providers/core_providers.dart';
-import '../../config/app_config.dart';
-import '../../utils/app_animations.dart';
 
 class SmartLoginScreen extends ConsumerStatefulWidget {
   const SmartLoginScreen({super.key});

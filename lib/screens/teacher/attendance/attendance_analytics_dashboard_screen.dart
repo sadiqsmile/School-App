@@ -4,7 +4,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../services/attendance_analytics_service.dart';
 import '../../../services/attendance_report_service.dart';
-import '../../../models/student_base.dart';
 import '../../../services/attendance_service_enhanced.dart';
 import '../../../widgets/loading_view.dart';
 import 'dart:io';

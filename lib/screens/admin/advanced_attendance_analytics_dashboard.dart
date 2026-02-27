@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../models/analytics_filter.dart';
 import '../../services/advanced_analytics_service.dart';
 import '../../services/attendance_report_service.dart';
+import '../../services/attendance_service_enhanced.dart';
 import '../../config/app_config.dart';
 
 /// Advanced Attendance Analytics Dashboard
@@ -33,6 +34,7 @@ class _AdvancedAttendanceAnalyticsDashboardState
   late AnalyticsFilter _currentFilter;
   late AdvancedAnalyticsService _analyticsService;
   late AttendanceReportService _reportService;
+  late AttendanceServiceEnhanced _attendanceService;
   
   bool _loading = false;
   AnalyticsMetrics? _metrics;
@@ -67,6 +69,7 @@ class _AdvancedAttendanceAnalyticsDashboardState
     
     _analyticsService = AdvancedAnalyticsService();
     _reportService = AttendanceReportService();
+    _attendanceService = AttendanceServiceEnhanced();
 
     // Initialize filter based on user role
     if (widget.userRole == 'class_teacher' && 
@@ -203,17 +206,31 @@ class _AdvancedAttendanceAnalyticsDashboardState
         const SnackBar(content: Text('Generating Excel report...')),
       );
 
-      await _reportService.generateExcelReport(
+      final students = await _attendanceService
+          .watchStudentsForClassSection(
+            schoolId: AppConfig.schoolId,
+            classId: _currentFilter.classId!,
+            sectionId: _currentFilter.sectionId!,
+          )
+          .first;
+
+      final reportTitle =
+          'Attendance Report - Class ${_currentFilter.classId} ${_currentFilter.sectionId} '
+          '(${DateFormat('MMM yyyy').format(_currentFilter.month)})';
+
+      final filePath = await _reportService.generateExcelReport(
         schoolId: AppConfig.schoolId,
         classId: _currentFilter.classId!,
         sectionId: _currentFilter.sectionId!,
         startDate: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
         endDate: DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0),
+        students: students,
+        reportTitle: reportTitle,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Excel report exported successfully!')),
+          SnackBar(content: Text('Excel report exported: $filePath')),
         );
       }
     } catch (e) {
@@ -233,17 +250,31 @@ class _AdvancedAttendanceAnalyticsDashboardState
         const SnackBar(content: Text('Generating PDF report...')),
       );
 
-      await _reportService.generatePdfReport(
+      final students = await _attendanceService
+          .watchStudentsForClassSection(
+            schoolId: AppConfig.schoolId,
+            classId: _currentFilter.classId!,
+            sectionId: _currentFilter.sectionId!,
+          )
+          .first;
+
+      final reportTitle =
+          'Attendance Report - Class ${_currentFilter.classId} ${_currentFilter.sectionId} '
+          '(${DateFormat('MMM yyyy').format(_currentFilter.month)})';
+
+      final filePath = await _reportService.generatePdfReport(
         schoolId: AppConfig.schoolId,
         classId: _currentFilter.classId!,
         sectionId: _currentFilter.sectionId!,
         startDate: DateTime(_selectedMonth.year, _selectedMonth.month, 1),
         endDate: DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0),
+        students: students,
+        reportTitle: reportTitle,
       );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('PDF report exported successfully!')),
+          SnackBar(content: Text('PDF report exported: $filePath')),
         );
       }
     } catch (e) {
@@ -350,7 +381,7 @@ class _AdvancedAttendanceAnalyticsDashboardState
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedYear,
+                    initialValue: _selectedYear,
                     decoration: const InputDecoration(
                       labelText: 'Academic Year',
                       border: OutlineInputBorder(),
@@ -394,7 +425,7 @@ class _AdvancedAttendanceAnalyticsDashboardState
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedClass,
+                    initialValue: _selectedClass,
                     decoration: const InputDecoration(
                       labelText: 'Class',
                       border: OutlineInputBorder(),
@@ -411,7 +442,7 @@ class _AdvancedAttendanceAnalyticsDashboardState
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: _selectedSection,
+                    initialValue: _selectedSection,
                     decoration: const InputDecoration(
                       labelText: 'Section',
                       border: OutlineInputBorder(),

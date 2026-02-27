@@ -433,12 +433,12 @@ class _ModernAdminSetupWizardState extends ConsumerState<ModernAdminSetupWizard>
                     _currentStep = 1;
                   });
                 },
-                child: Text('Use $_activeYearId'),
                 style: OutlinedButton.styleFrom(
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
+                child: Text('Use $_activeYearId'),
               ),
             ),
           ],
@@ -549,13 +549,13 @@ class _ModernAdminSetupWizardState extends ConsumerState<ModernAdminSetupWizard>
               Expanded(
                 child: OutlinedButton(
                   onPressed: () => setState(() => _currentStep = 1),
-                  child: const Text('Back'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text('Back'),
                 ),
               ),
               const SizedBox(width: 12),
@@ -565,13 +565,13 @@ class _ModernAdminSetupWizardState extends ConsumerState<ModernAdminSetupWizard>
                   onPressed: (_classSectionsData != null || _studentsData != null)
                       ? () => setState(() => _currentStep = 3)
                       : null,
-                  child: const Text('Preview & Import'),
                   style: FilledButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
+                  child: const Text('Preview & Import'),
                 ),
               ),
             ],
@@ -645,13 +645,13 @@ class _ModernAdminSetupWizardState extends ConsumerState<ModernAdminSetupWizard>
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => setState(() => _currentStep = 2),
-                    child: const Text('Back'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(56),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
+                    child: const Text('Back'),
                   ),
                 ),
                 const SizedBox(width: 12),

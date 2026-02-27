@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../models/app_user.dart';
-import '../../../providers/auth_providers.dart';
 import '../../../services/attendance_service_enhanced.dart';
 import '../../../services/attendance_analytics_service.dart';
 import '../../../widgets/loading_view.dart';

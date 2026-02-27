@@ -133,6 +133,28 @@ class AttendanceServiceEnhanced {
         .doc(monthId(month));
   }
 
+  /// Watches base students for a class/section.
+  ///
+  /// Kept compatible with the legacy `AttendanceService.watchStudentsForClassSection`
+  /// API so existing UI screens can swap between services.
+  Stream<List<StudentBase>> watchStudentsForClassSection({
+    String schoolId = AppConfig.schoolId,
+    required String classId,
+    required String sectionId,
+  }) {
+    final q = _schoolDoc(schoolId: schoolId)
+        .collection('students')
+        .where('class', isEqualTo: classId)
+        .where('section', isEqualTo: sectionId)
+        .orderBy('name');
+
+    return q.snapshots().map((snap) {
+      return snap.docs
+          .map((d) => StudentBase.fromMap(d.id, d.data()))
+          .toList(growable: false);
+    });
+  }
+
   // ============================================================================
   // SAVE ATTENDANCE WITH ENHANCED FEATURES
   // ============================================================================
@@ -189,7 +211,6 @@ class AttendanceServiceEnhanced {
     // Count statistics
     var presentCount = 0;
     var absentCount = 0;
-    var holidayCount = 0;
 
     final studentRecords = <String, Map<String, dynamic>>{};
     final absentStudentIds = <String>[];
@@ -209,8 +230,6 @@ class AttendanceServiceEnhanced {
       } else if (status == AttendanceStatus.absent) {
         absentCount++;
         absentStudentIds.add(student.id);
-      } else if (status == AttendanceStatus.holiday) {
-        holidayCount++;
       }
     }
 
@@ -555,7 +574,7 @@ class AttendanceServiceEnhanced {
         .limit(50);
 
     if (onlyUnacknowledged) {
-      query = query.where('acknowledged', isEqualTo: false) as Query<Map<String, dynamic>>;
+      query = query.where('acknowledged', isEqualTo: false);
     }
 
     return query.snapshots();
