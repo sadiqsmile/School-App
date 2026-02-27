@@ -1,3 +1,5 @@
+
+const cors = require("cors")({ origin: true });
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 
@@ -721,33 +723,40 @@ exports.notifyConsecutiveAbsents = functions
     }
   });
 
+
+
+  //==================================================================== 
   // ======================================================
 // SCHOOL MASTER DATA SYNC FUNCTION (GOOGLE SHEET)
 // ======================================================
 
 exports.syncSchoolData = functions
   .region("asia-south1")
-  .https.onRequest(async (req, res) => {
-    try {
-      if (req.method !== "POST") {
-        return res.status(405).send("Method Not Allowed");
-      }
+  .https.onRequest((req, res) => {
+    cors(req, res, async () => {
+      try {
+        if (req.method !== "POST") {
+          return res.status(405).send("Method Not Allowed");
+        }
 
-      const teachers = req.body.teachers || [];
-      const students = req.body.students || [];
-      const parents = req.body.parents || [];
-      const teacherClassAssignments = req.body.teacherClassAssignments || [];
+        const teachers = req.body.teachers || [];
+        const students = req.body.students || [];
+        const parents = req.body.parents || [];
+        const teacherClassAssignments = req.body.teacherClassAssignments || [];
 
-      const schoolRef = db.collection("school_001").doc("school_001");
-      const countersRef = schoolRef.collection("counters").doc("system");
-      const configRef = schoolRef.collection("config").doc("system");
+        const schoolRef = db.collection("school_001").doc("school_001");
+        const countersRef = schoolRef.collection("counters").doc("system");
+        const configRef = schoolRef.collection("config").doc("system");
 
-      const configSnap = await configRef.get();
-      const currentAcademicYear = configSnap.exists
-        ? configSnap.data().currentAcademicYear
-        : "2026";
+        const configSnap = await configRef.get();
+        const currentAcademicYear = configSnap.exists
+          ? configSnap.data().currentAcademicYear
+          : "2026";
 
 
+        // 🔽 KEEP YOUR EXISTING SYNC LOGIC BELOW THIS
+
+    
 
      // ==========================
 // PARENTS SYNC (SAFE MATCHING)
@@ -834,14 +843,6 @@ for (const parent of parents) {
   }
 }
      
-
-
-
-
-
-
-
-
       // ==========================
       // TEACHERS SYNC
       // ==========================
@@ -1028,8 +1029,11 @@ for (const student of students) {
         updated: updatedCount
       });
 
-    } catch (error) {
-      console.error("Sync Error:", error);
-      return res.status(500).json({ error: error.message });
-    }
+
+      } catch (error) {
+        console.error("Sync Error:", error);
+        return res.status(500).json({ error: error.message });
+      }
+    });
   });
+

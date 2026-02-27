@@ -74,20 +74,24 @@ class _AdminDashboardState extends ConsumerState<AdminDashboard> {
         appBar: AppBar(title: const Text('Admin Dashboard')),
         body: Center(child: Text('Error: $err')),
       ),
+      
       data: (appUser) {
         final adminUid = authUserAsync.asData?.value?.uid;
         final isWide = MediaQuery.sizeOf(context).width >= 900;
-        if (!_autoSelected) {
-          final yearId = yearAsync.asData?.value;
-          final needsSetup = yearId == null || yearId.isEmpty;
-          if (needsSetup) {
-            final setupIndex = _items.indexWhere((item) => item.page == _AdminPage.setupWizard);
-            if (setupIndex >= 0) {
-              _selectedIndex = setupIndex;
-            }
-          }
-          _autoSelected = true;
-        }
+       if (!_autoSelected && yearAsync.hasValue) {
+  final yearId = yearAsync.value;
+  final needsSetup = yearId == null || yearId.isEmpty;
+
+  if (needsSetup) {
+    final setupIndex =
+        _items.indexWhere((item) => item.page == _AdminPage.setupWizard);
+    if (setupIndex >= 0) {
+      _selectedIndex = setupIndex;
+    }
+  }
+
+  _autoSelected = true;
+}
 
         final selected = _items[_selectedIndex];
         final scheme = Theme.of(context).colorScheme;
@@ -342,10 +346,11 @@ class _AdminContent extends ConsumerWidget {
                             ),
                             padding: const EdgeInsets.all(8),
                             child: ClipOval(
-                              child: Image.asset(
-                                'assets/images/school_logo.png',
-                                fit: BoxFit.contain,
-                              ),
+                              child: Icon(
+  Icons.school,
+  size: 36,
+  color: Theme.of(context).colorScheme.primary,
+),
                             ),
                           ),
                           const SizedBox(width: 16),

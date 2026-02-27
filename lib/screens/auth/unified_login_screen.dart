@@ -500,9 +500,7 @@ class _PremiumHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Branding logo paths
-    const primaryLogoAssetPath = 'assets/images/logo.png';
-    const fallbackLogoAssetPath = 'assets/images/school_logo.png';
-
+   
     final media = MediaQuery.of(context);
     final dpr = media.devicePixelRatio;
     final isCompact = media.size.width < 360;
@@ -514,109 +512,21 @@ class _PremiumHeader extends StatelessWidget {
     // Increased cache multiplier for HD rendering (2x for crisp display)
     final cachePx = (maxLogoSize * 2.5 * dpr).round();
 
-    return Column(
-      children: [
-        // Logo with natural aspect ratio - shadow removed for cleaner look
-        RepaintBoundary(
-          child: Align(
-            alignment: Alignment.center,
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: maxLogoSize,
-                maxHeight: maxLogoSize * 1.2, // Allow slightly taller for logo proportions
-              ),
-              child: Image.asset(
-                primaryLogoAssetPath,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-                isAntiAlias: true,
-                // HD cache settings for maximum clarity
-                cacheWidth: cachePx,
-                cacheHeight: cachePx,
-                gaplessPlayback: true,
-                errorBuilder: (context, error, stackTrace) {
-                  return Image.asset(
-                    fallbackLogoAssetPath,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                    isAntiAlias: true,
-                    // HD cache settings for fallback logo too
-                    cacheWidth: cachePx,
-                    cacheHeight: cachePx,
-                    gaplessPlayback: true,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        constraints: BoxConstraints(
-                          maxWidth: maxLogoSize,
-                          maxHeight: maxLogoSize * 1.2,
-                        ),
-                        child: Icon(
-                          Icons.school_rounded,
-                          size: maxLogoSize * 0.6,
-                          color: const Color(0xFF42A5F5),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        // 2-line title: HONGIRANA / School of Excellence
-        Text(
-          'HONGIRANA',
-          style: TextStyle(
-            fontFamily: 'Ubuntu',
-            fontSize: isCompact ? 28 : (isMobile ? 32 : 40),
-            fontWeight: FontWeight.w900,
-            letterSpacing: 0.5,
-            height: 1.0,
-            color: const Color(0xFF5C2E2E),
-            shadows: [
-              Shadow(
-                color: Colors.black.withValues(alpha: 0.08),
-                offset: const Offset(0, 2),
-                blurRadius: 4,
-              ),
-            ],
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'School of Excellence',
-          style: TextStyle(
-            fontFamily: 'Ubuntu',
-            fontSize: isCompact ? 15 : (isMobile ? 16 : 18),
-            fontWeight: FontWeight.w600,
-            letterSpacing: 0.2,
-            height: 1.1,
-            color: const Color(0xFF5C2E2E),
-            shadows: [
-              Shadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                offset: const Offset(0, 1),
-                blurRadius: 2,
-              ),
-            ],
-          ),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Welcome back',
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w400,
-            letterSpacing: 0.3,
-            color: const Color(0xFF6B7280),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
+    
+Container(
+  width: 100,
+  height: 100,
+  decoration: BoxDecoration(
+    shape: BoxShape.circle,
+    color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+  ),
+  child: Icon(
+    Icons.school_rounded,
+    size: 50,
+    color: Theme.of(context).colorScheme.primary,
+  ),
+),
+
   }
 }
 
