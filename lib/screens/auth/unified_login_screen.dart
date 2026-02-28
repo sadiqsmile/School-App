@@ -73,7 +73,7 @@ class _UnifiedLoginScreenState extends ConsumerState<UnifiedLoginScreen> {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
               ),
               SizedBox(height: 12),
-              Text('📧 Email: support@hongirana.edu'),
+              Text('📧 Email: support@SK School Master.edu'),
               SizedBox(height: 8),
               Text('📞 Phone: +91-XXXX-XXXX-XXXX'),
               SizedBox(height: 8),
@@ -755,7 +755,7 @@ class _PremiumFooter extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         Text(
-          '© 2026 Hongirana School of Excellence',
+          '© 2026 SK School Master of Excellence',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: const Color(0xFF9CA3AF),
                 fontSize: 12,

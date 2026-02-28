@@ -48,7 +48,7 @@ class _TeacherContactParentsScreenState extends ConsumerState<TeacherContactPare
     final tail = extra.trim();
 
     final base =
-        'Hi, I am $teacherName from Hongirana School. Regarding ${s.studentName} (Class ${s.classId}-${s.sectionId}, Admission No: $admission).';
+        'Hi, I am $teacherName from SK School Master. Regarding ${s.studentName} (Class ${s.classId}-${s.sectionId}, Admission No: $admission).';
 
     if (tail.isEmpty) return base;
     if (tail.startsWith('.')) return '$base $tail';

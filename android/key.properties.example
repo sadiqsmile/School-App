@@ -3,13 +3,13 @@
 # IMPORTANT: Do NOT commit android/key.properties or your .jks file.
 
 # Path to your keystore file (relative paths are OK)
-storeFile=../hongirana-2026-release.jks
+storeFile=../skschoolmaster-2026-release.jks
 
 # Keystore password
 storePassword=CHANGE_ME
 
 # Key alias inside the keystore
-keyAlias=hongirana
+keyAlias=skschoolmaster
 
 # Key password
 keyPassword=CHANGE_ME

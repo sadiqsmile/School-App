@@ -160,7 +160,7 @@ Completely redesigned [lib/screens/auth/unified_login_screen.dart](lib/screens/a
 - iOS fintech app aesthetic
 
 ### 3. Premium Header
-- School name (Hongirana School)
+- School name (SK School Master)
 - Circular gradient icon
 - "Welcome back" subtitle
 - Clean, professional hierarchy

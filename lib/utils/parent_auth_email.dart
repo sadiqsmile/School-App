@@ -2,12 +2,12 @@
 ///
 /// Parents sign in with Mobile+Password in the UI, but internally we use
 /// a generated email address for FirebaseAuth:
-///   mobile@parents.hongirana.school
+///   mobile@parents.sk-school-master
 /// Example:
-///   8090809090@parents.hongirana.school
+///   8090809090@parents.sk-school-master
 library;
 
-const String kParentAuthEmailDomain = 'parents.hongirana.school';
+const String kParentAuthEmailDomain = 'parents.sk-school-master';
 
 /// Returns only digits from input.
 String digitsOnly(String input) => input.replaceAll(RegExp(r'\D'), '');

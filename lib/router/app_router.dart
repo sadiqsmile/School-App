@@ -40,7 +40,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       }
 
       // For parents, check approval status before proceeding to dashboard
-      if (user.email != null && user.email!.contains('@parents.hongirana.school')) {
+      if (user.email != null && user.email!.contains('@parents.sk-school-master')) {
         final mobile = tryExtractMobileFromParentEmail(user.email ?? '');
         if (mobile != null) {
           try {

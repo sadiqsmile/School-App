@@ -1,11 +1,11 @@
 {
-    "name": "Hongirana",
-    "short_name": "Hongirana",
+    "name": "SK School Master",
+    "short_name": "SK School Master",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Hongirana School of Excellence - School Management System",
+    "description": "SK School Master of Excellence - School Management System",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

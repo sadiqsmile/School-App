@@ -57,7 +57,18 @@ class AuthService {
       onStatus?.call('Finishing setup…');
       await _postParentAuthSignIn(mobile: mobile, onStatus: onStatus);
       return;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e, stack) {
+      // Detailed debugging output
+      print('[FirebaseAuthException] code: \\${e.code}');
+      print('[FirebaseAuthException] message: \\${e.message}');
+      print('[FirebaseAuthException] stack trace: \\${stack.toString()}');
+      try {
+        final app = FirebaseAuth.instance.app;
+        print('[FirebaseApp] name: \\${app.name}');
+        print('[FirebaseApp] projectId: \\${app.options.projectId}');
+      } catch (err) {
+        print('[FirebaseApp] Error getting app info: \\${err.toString()}');
+      }
       // Continue to migration flow only if the auth user doesn't exist yet.
       if (e.code != 'user-not-found') {
         // Firebase can return invalid-credential / wrong-password / too-many-requests, etc.
@@ -86,7 +97,7 @@ class AuthService {
 
   /// Change password for the currently logged-in parent (stored in SharedPreferences).
   ///
-  /// New design: parent is a FirebaseAuth user (email = mobile@parents.hongirana.school).
+  /// New design: parent is a FirebaseAuth user (email = mobile@parents.sk-school-master).
   ///
   /// - Reauthenticates with old password
   /// - Updates FirebaseAuth password

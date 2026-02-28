@@ -26,6 +26,7 @@ to update to web:______________
 
 flutter build web
 firebase deploy
+
 firebase init hosting
 
 

@@ -51,7 +51,7 @@ Effect: Premium fintech app aesthetic
 
 ```
 Icon: 80x80 circle with gradient blue-teal
-Title: "Hongirana School" (bold, -0.5px letter spacing)
+Title: "SK School Master" (bold, -0.5px letter spacing)
 Subtitle: "Welcome back" (gray, 0.1px letter spacing)
 Alignment: Center, stacked layout
 ```
@@ -137,7 +137,7 @@ Shadow: Realistic depth effect
 
 ### 10. **Premium Footer** 🏷️
 - Separator divider line
-- School name with year: "© 2026 Hongirana School"
+- School name with year: "© 2026 SK School Master"
 - App version: "v1.0.0"
 - Subtle gray colors (#99A3A0, #B3B9B8)
 - Small, professional typography

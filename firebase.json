@@ -3,43 +3,34 @@
     "platforms": {
       "android": {
         "default": {
-          "projectId": "hongiranaapp",
-          "appId": "1:483672560035:android:6596c6d3c980a70dc30a16",
+          "projectId": "sk-school-master",
+          "appId": "1:836702428678:android:cc3657204e1a1ff51bad87",
           "fileOutput": "android/app/google-services.json"
         }
       },
       "dart": {
         "lib/firebase_options.dart": {
-          "projectId": "hongiranaapp",
+          "projectId": "sk-school-master",
           "configurations": {
-            "android": "1:483672560035:android:6596c6d3c980a70dc30a16",
-            "web": "1:483672560035:web:7d637c2e1effa67dc30a16"
+            "android": "1:836702428678:android:cc3657204e1a1ff51bad87",
+            "web": "1:836702428678:web:0744a0e5276096fd1bad87"
           }
         }
       }
     }
   },
-  "functions": {
-    "source": "functions"
-  },
-  "firestore": {
-    "rules": "firestore.rules"
-  },
-  "storage": {
-    "rules": "storage.rules"
-  },
-  "hosting": {
-    "public": "build/web",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
-  }
+ "hosting": {
+  "public": "build/web",
+  "ignore": [
+    "firebase.json",
+    "**/.*",
+    "**/node_modules/**"
+  ],
+  "rewrites": [
+    {
+      "source": "**",
+      "destination": "/index.html"
+    }
+  ]
+}
 }

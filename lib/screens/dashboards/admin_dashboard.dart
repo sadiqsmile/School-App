@@ -215,7 +215,7 @@ class _AdminContent extends ConsumerWidget {
   Future<void> _syncSchoolData(BuildContext context) async {
     try {
       final response = await http.post(
-        Uri.parse('https://asia-south1-hongiranaapp.cloudfunctions.net/syncSchoolData'),
+        Uri.parse('https://asia-south1-sk-school-master.cloudfunctions.net/syncSchoolData'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'secret': 'ADMIN_SYNC_2026'}),
       ).timeout(const Duration(seconds: 30));
@@ -359,7 +359,7 @@ class _AdminContent extends ConsumerWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Hongirana School',
+                                  'SK School Master',
                                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,

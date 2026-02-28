@@ -263,7 +263,7 @@ Future<void> syncSchoolData() async {
   try {
     final response = await http.post(
       Uri.parse(
-          "https://asia-south1-hongiranaapp.cloudfunctions.net/syncSchoolData"),
+          "https://asia-south1-sk-school-master.cloudfunctions.net/syncSchoolData"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({
         "teachers": _teacherRows.map((e) => e.toJson()).toList(),

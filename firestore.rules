@@ -19,12 +19,13 @@ service cloud.firestore {
     }
 
     function isParentAuthEmail() {
-      // Parents sign in with: <10digits>@parents.hongirana.school
+      // Parents sign in with: <10digits>@parents.sk-school-master
       return tokenEmail() != null && tokenEmail().matches('^[0-9]{10}@parents\\.hongirana\\.school$');
+        return tokenEmail() != null && tokenEmail().matches('^[0-9]{10}@parents\\.skschoolmaster\\.school$');
     }
 
     function parentEmailForMobile(mobile) {
-      return mobile + '@parents.hongirana.school';
+      return mobile + '@parents.sk-school-master';
     }
 
     function isSameParentMobile(mobile) {

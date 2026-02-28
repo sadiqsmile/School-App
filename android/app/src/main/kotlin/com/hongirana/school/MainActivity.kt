@@ -1,4 +1,4 @@
-package com.hongirana.school
+package com.sk.schoolmaster
 
 import io.flutter.embedding.android.FlutterActivity
 
